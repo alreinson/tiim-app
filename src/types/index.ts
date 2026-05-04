@@ -70,6 +70,7 @@ export interface Checkin {
   id: string
   user_id: string
   type: CheckinType
+  week: string            // ISO week string e.g. "2026-W19"
   transcript: string
   mood?: number           // 1–5
   energy?: number         // 1–5
