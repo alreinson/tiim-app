@@ -1,11 +1,12 @@
 'use client'
 
 import * as React from 'react'
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import type { User } from '@/types'
 import type { CommunicationPrefsValue } from './steps/communication-prefs'
+import { RoleSelect } from './steps/role-select'
 import { Welcome } from './steps/welcome'
 import { HowChatWorks } from './steps/how-chat-works'
 import { WeeklyIntro } from './steps/weekly-intro'
@@ -14,9 +15,12 @@ import { BelbinUpload } from './steps/belbin-upload'
 import { CompanySetup } from './steps/company-setup'
 import { ManagerWelcome } from './steps/manager-welcome'
 import { ManagerGoalsIntro } from './steps/manager-goals-intro'
+import { InviteTeam } from './steps/invite-team'
+import { ConfirmConnection } from './steps/confirm-connection'
 
 // ─── Step IDs ────────────────────────────────────────────────────────────────
 type StepId =
+  | 'role-select'
   | 'welcome'
   | 'how-chat-works'
   | 'weekly-intro'
@@ -25,29 +29,25 @@ type StepId =
   | 'communication-prefs'
   | 'belbin-upload'
   | 'company-setup'
+  | 'invite-team'
+  | 'confirm-connection'
   | 'done'
 
-const TEAM_MEMBER_STEPS: StepId[] = [
-  'welcome',
-  'how-chat-works',
-  'weekly-intro',
-  'communication-prefs',
-  'belbin-upload',
-  'company-setup',
-  'done',
-]
+function buildSteps(isManager: boolean, hasInvite: boolean): StepId[] {
+  const intro: StepId[] = isManager
+    ? ['manager-welcome', 'manager-goals-intro']
+    : ['welcome', 'how-chat-works', 'weekly-intro']
 
-const MANAGER_STEPS: StepId[] = [
-  'manager-welcome',
-  'manager-goals-intro',
-  'communication-prefs',
-  'belbin-upload',
-  'company-setup',
-  'done',
-]
+  const common: StepId[] = ['communication-prefs', 'belbin-upload']
 
-// Steps that handle their own navigation buttons internally
+  if (hasInvite) {
+    return ['role-select', ...intro, ...common, 'confirm-connection', 'done']
+  }
+  return ['role-select', ...intro, ...common, 'company-setup', 'invite-team', 'done']
+}
+
 const SELF_NAVIGATING_STEPS = new Set<StepId>([
+  'role-select',
   'welcome',
   'how-chat-works',
   'weekly-intro',
@@ -55,6 +55,8 @@ const SELF_NAVIGATING_STEPS = new Set<StepId>([
   'manager-goals-intro',
   'belbin-upload',
   'company-setup',
+  'invite-team',
+  'confirm-connection',
 ])
 
 // ─── Form data ────────────────────────────────────────────────────────────────
@@ -70,22 +72,30 @@ const DEFAULT_PREFS: CommunicationPrefsValue = {
   language: 'et',
 }
 
-// ─── Wizard ──────────────────────────────────────────────────────────────────
-interface OnboardingWizardProps {
-  user: User
+interface InviteContext {
+  token: string
+  inviter_name: string
+  invitee_role: 'team_member' | 'manager'
 }
 
-export function OnboardingWizard({ user }: OnboardingWizardProps) {
-  const router = useRouter()
-  const isManager = user.role === 'manager' || user.role === 'admin'
-  const steps = isManager ? MANAGER_STEPS : TEAM_MEMBER_STEPS
+// ─── Wizard ──────────────────────────────────────────────────────────────────
+export interface OnboardingWizardProps {
+  user: User
+  inviteToken?: string
+}
 
+export function OnboardingWizard({ user, inviteToken: propToken }: OnboardingWizardProps) {
+  const router = useRouter()
+
+  const [selectedRole, setSelectedRole] = useState<'team_member' | 'manager'>(
+    user.role === 'manager' ? 'manager' : 'team_member'
+  )
+  const [inviteCtx, setInviteCtx] = useState<InviteContext | null>(null)
   const [currentStep, setCurrentStep] = useState(0)
   const [formData, setFormData] = useState<OnboardingFormData>({
     prefs: {
       support_style: user.support_style ?? DEFAULT_PREFS.support_style,
-      feedback_directness:
-        user.feedback_directness ?? DEFAULT_PREFS.feedback_directness,
+      feedback_directness: user.feedback_directness ?? DEFAULT_PREFS.feedback_directness,
       language: user.language ?? DEFAULT_PREFS.language,
     },
     belbinUploaded: user.belbin_uploaded ?? false,
@@ -93,6 +103,47 @@ export function OnboardingWizard({ user }: OnboardingWizardProps) {
   })
   const [isFinishing, setIsFinishing] = useState(false)
   const [finishError, setFinishError] = useState<string | null>(null)
+
+  // Resolve invite token from prop or localStorage, then fetch invite info
+  useEffect(() => {
+    const token = propToken ?? (typeof window !== 'undefined' ? localStorage.getItem('tiim_invite_token') ?? undefined : undefined)
+    if (!token) return
+
+    async function loadInvite() {
+      try {
+        // Use the invite (sets company + role on the user)
+        const useRes = await fetch(`/api/invites/${token}/use`, { method: 'POST' })
+        if (!useRes.ok) {
+          localStorage.removeItem('tiim_invite_token')
+          return
+        }
+        const useData = await useRes.json()
+
+        // Fetch invite info for the confirm-connection step
+        const infoRes = await fetch(`/api/invites/${token}`)
+        if (!infoRes.ok) return
+        const info = await infoRes.json()
+
+        setInviteCtx({
+          token: token!,
+          inviter_name: info.inviter_name,
+          invitee_role: useData.invitee_role,
+        })
+        setSelectedRole(useData.invitee_role)
+        localStorage.removeItem('tiim_invite_token')
+      } catch {
+        localStorage.removeItem('tiim_invite_token')
+      }
+    }
+
+    loadInvite()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const steps = useMemo(
+    () => buildSteps(selectedRole === 'manager', inviteCtx !== null),
+    [selectedRole, inviteCtx]
+  )
 
   const stepId = steps[currentStep]
   const progressValue = Math.round(((currentStep + 1) / steps.length) * 100)
@@ -109,12 +160,16 @@ export function OnboardingWizard({ user }: OnboardingWizardProps) {
     setFormData((d) => ({ ...d, prefs: v }))
   }, [])
 
+  function handleRoleSelected(role: 'team_member' | 'manager') {
+    setSelectedRole(role)
+    goNext()
+  }
+
   async function handleFinish(destination: '/dashboard' | '/chat' | '/goals') {
     setIsFinishing(true)
     setFinishError(null)
     try {
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
-
       const res = await fetch('/api/onboarding/complete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -125,11 +180,7 @@ export function OnboardingWizard({ user }: OnboardingWizardProps) {
           timezone,
         }),
       })
-
-      if (!res.ok) {
-        throw new Error('Salvestamine ebaõnnestus. Proovi uuesti.')
-      }
-
+      if (!res.ok) throw new Error('Salvestamine ebaõnnestus. Proovi uuesti.')
       router.push(destination)
     } catch (err) {
       setFinishError(err instanceof Error ? err.message : 'Midagi läks valesti.')
@@ -145,7 +196,6 @@ export function OnboardingWizard({ user }: OnboardingWizardProps) {
       className="flex min-h-screen w-full flex-col items-center justify-center px-4 py-12"
       style={{ background: 'var(--pz-grad-app-bg)' }}
     >
-      {/* Wizard card */}
       <div
         className="w-full max-w-[640px] rounded-[10px]"
         style={{
@@ -168,16 +218,11 @@ export function OnboardingWizard({ user }: OnboardingWizardProps) {
             </span>
             <span
               className="rounded-full px-2.5 py-0.5 text-xs font-semibold"
-              style={{
-                background: 'var(--pz-grad-primary)',
-                color: 'white',
-              }}
+              style={{ background: 'var(--pz-grad-primary)', color: 'white' }}
             >
               {progressValue}%
             </span>
           </div>
-
-          {/* Progress bar */}
           <div
             className="h-2 w-full overflow-hidden rounded-full"
             style={{ background: 'var(--pz-border)' }}
@@ -185,7 +230,6 @@ export function OnboardingWizard({ user }: OnboardingWizardProps) {
             aria-valuenow={progressValue}
             aria-valuemin={0}
             aria-valuemax={100}
-            aria-label={`Onboarding progress: ${progressValue}%`}
           >
             <div
               className="h-full rounded-full"
@@ -198,14 +242,16 @@ export function OnboardingWizard({ user }: OnboardingWizardProps) {
           </div>
         </div>
 
-        {/* Step content */}
         <StepTransition stepKey={stepId}>
           <StepRenderer
             stepId={stepId}
             user={user}
+            selectedRole={selectedRole}
+            inviteCtx={inviteCtx}
             formData={formData}
             isFinishing={isFinishing}
             finishError={finishError}
+            onRoleSelected={handleRoleSelected}
             onNext={goNext}
             onSkip={goNext}
             onDone={goNext}
@@ -218,10 +264,8 @@ export function OnboardingWizard({ user }: OnboardingWizardProps) {
           />
         </StepTransition>
 
-        {/* Shared footer nav — only for steps that don't self-navigate */}
         {showFooter && (
           <WizardFooter
-            stepId={stepId}
             currentStep={currentStep}
             isFinishing={isFinishing}
             finishError={finishError}
@@ -232,7 +276,6 @@ export function OnboardingWizard({ user }: OnboardingWizardProps) {
         )}
       </div>
 
-      {/* Branding footnote */}
       <p className="mt-8 text-xs" style={{ color: 'var(--pz-fg-3)' }}>
         Tiim.app · Aus AI meeskonnatoe jaoks
       </p>
@@ -244,9 +287,12 @@ export function OnboardingWizard({ user }: OnboardingWizardProps) {
 interface StepRendererProps {
   stepId: StepId
   user: User
+  selectedRole: 'team_member' | 'manager'
+  inviteCtx: InviteContext | null
   formData: OnboardingFormData
   isFinishing: boolean
   finishError: string | null
+  onRoleSelected: (role: 'team_member' | 'manager') => void
   onNext: () => void
   onSkip: () => void
   onDone: () => void
@@ -258,9 +304,12 @@ interface StepRendererProps {
 function StepRenderer({
   stepId,
   user,
+  selectedRole,
+  inviteCtx,
   formData,
   isFinishing,
   finishError,
+  onRoleSelected,
   onNext,
   onSkip,
   onDone,
@@ -268,9 +317,14 @@ function StepRenderer({
   onBelbinUploaded,
   onFinish,
 }: StepRendererProps) {
-  const isManager = user.role === 'manager' || user.role === 'admin'
-
   switch (stepId) {
+    case 'role-select':
+      return (
+        <RoleSelect
+          initialRole={selectedRole}
+          onNext={onRoleSelected}
+        />
+      )
     case 'welcome':
       return <Welcome onNext={onNext} />
     case 'how-chat-works':
@@ -282,17 +336,26 @@ function StepRenderer({
     case 'manager-goals-intro':
       return <ManagerGoalsIntro onNext={onNext} />
     case 'communication-prefs':
-      return (
-        <CommunicationPrefs value={formData.prefs} onChange={onPrefsChange} />
-      )
+      return <CommunicationPrefs value={formData.prefs} onChange={onPrefsChange} />
     case 'belbin-upload':
       return <BelbinUpload onSkip={onSkip} onUploaded={onBelbinUploaded} />
     case 'company-setup':
       return <CompanySetup user={user} onDone={onDone} />
+    case 'invite-team':
+      return <InviteTeam onNext={onNext} />
+    case 'confirm-connection':
+      return inviteCtx ? (
+        <ConfirmConnection
+          inviterName={inviteCtx.inviter_name}
+          inviteToken={inviteCtx.token}
+          inviteeRole={inviteCtx.invitee_role}
+          onNext={onNext}
+        />
+      ) : null
     case 'done':
       return (
         <DoneStep
-          isManager={isManager}
+          isManager={selectedRole === 'manager'}
           isFinishing={isFinishing}
           finishError={finishError}
           onFinish={onFinish}
@@ -304,35 +367,33 @@ function StepRenderer({
 }
 
 // ─── Done step ────────────────────────────────────────────────────────────────
-interface DoneStepProps {
+function DoneStep({
+  isManager,
+  isFinishing,
+  finishError,
+  onFinish,
+}: {
   isManager: boolean
   isFinishing: boolean
   finishError: string | null
   onFinish: (destination: '/dashboard' | '/chat' | '/goals') => Promise<void>
-}
-
-function DoneStep({ isManager, isFinishing, finishError, onFinish }: DoneStepProps) {
+}) {
   return (
     <div className="flex flex-col items-center gap-6 py-4 text-center">
       <div
         className="flex size-20 items-center justify-center rounded-full text-4xl"
         style={{ background: 'var(--pz-grad-primary)' }}
-        aria-hidden="true"
       >
         🎉
       </div>
-
       <div className="flex flex-col gap-2">
-        <h2
-          className="text-2xl font-semibold tracking-tight"
-          style={{ color: 'var(--pz-fg-1)' }}
-        >
+        <h2 className="text-2xl font-semibold tracking-tight" style={{ color: 'var(--pz-fg-1)' }}>
           Oled valmis!
         </h2>
         <p className="text-sm leading-relaxed" style={{ color: 'var(--pz-fg-3)' }}>
           {isManager
-            ? 'Sinu tiim ootab. Alusta esimese eesmärgi seadmisest või kutsuge tiimiliikmeid liituma.'
-            : 'Sinu onboarding on lõpetatud. Alusta esimese nädala sisseregistreerimisega või sea oma kvartalieesmärgid.'}
+            ? 'Sinu tiim ootab. Alusta esimese eesmärgi seadmisest.'
+            : 'Onboarding on lõpetatud. Alusta esimese nädala sisseregistreerimisega.'}
         </p>
       </div>
 
@@ -344,53 +405,24 @@ function DoneStep({ isManager, isFinishing, finishError, onFinish }: DoneStepPro
 
       {isManager ? (
         <div className="flex flex-col gap-3 sm:flex-row">
-          <DoneButton
-            label="Sea esimene eesmärk"
-            primary
-            disabled={isFinishing}
-            onClick={() => void onFinish('/goals')}
-          />
-          <DoneButton
-            label="Mine armatuurlauale"
-            primary={false}
-            disabled={isFinishing}
-            onClick={() => void onFinish('/dashboard')}
-          />
+          <DoneButton label="Sea esimene eesmärk" primary disabled={isFinishing} onClick={() => void onFinish('/goals')} />
+          <DoneButton label="Mine armatuurlauale" primary={false} disabled={isFinishing} onClick={() => void onFinish('/dashboard')} />
         </div>
       ) : (
         <div className="flex flex-col gap-3 sm:flex-row">
-          <DoneButton
-            label="Alusta sisseregistreerimist"
-            primary
-            disabled={isFinishing}
-            onClick={() => void onFinish('/chat')}
-          />
-          <DoneButton
-            label="Sea eesmärgid"
-            primary={false}
-            disabled={isFinishing}
-            onClick={() => void onFinish('/goals')}
-          />
+          <DoneButton label="Alusta sisseregistreerimist" primary disabled={isFinishing} onClick={() => void onFinish('/chat')} />
+          <DoneButton label="Sea eesmärgid" primary={false} disabled={isFinishing} onClick={() => void onFinish('/goals')} />
         </div>
       )}
 
       {isFinishing && (
-        <p className="text-xs" style={{ color: 'var(--pz-fg-3)' }}>
-          Salvestamine...
-        </p>
+        <p className="text-xs" style={{ color: 'var(--pz-fg-3)' }}>Salvestamine...</p>
       )}
     </div>
   )
 }
 
-interface DoneButtonProps {
-  label: string
-  primary: boolean
-  disabled: boolean
-  onClick: () => void
-}
-
-function DoneButton({ label, primary, disabled, onClick }: DoneButtonProps) {
+function DoneButton({ label, primary, disabled, onClick }: { label: string; primary: boolean; disabled: boolean; onClick: () => void }) {
   return (
     <button
       type="button"
@@ -399,18 +431,8 @@ function DoneButton({ label, primary, disabled, onClick }: DoneButtonProps) {
       className="inline-flex items-center justify-center rounded-[10px] px-5 py-2.5 text-sm font-semibold transition-all disabled:opacity-50"
       style={
         primary
-          ? {
-              background: 'var(--pz-grad-primary)',
-              color: 'white',
-              border: 'none',
-              transitionDuration: 'var(--pz-dur-base)',
-            }
-          : {
-              background: 'var(--pz-surface)',
-              color: 'var(--pz-fg-1)',
-              border: '1px solid var(--pz-border)',
-              transitionDuration: 'var(--pz-dur-base)',
-            }
+          ? { background: 'var(--pz-grad-primary)', color: 'white', border: 'none' }
+          : { background: 'var(--pz-surface)', color: 'var(--pz-fg-1)', border: '1px solid var(--pz-border)' }
       }
     >
       {label}
@@ -418,23 +440,20 @@ function DoneButton({ label, primary, disabled, onClick }: DoneButtonProps) {
   )
 }
 
-// ─── Shared footer nav (communication-prefs only in practice) ─────────────────
-interface WizardFooterProps {
-  stepId: StepId
+// ─── Shared footer nav ────────────────────────────────────────────────────────
+function WizardFooter({
+  currentStep,
+  isFinishing,
+  onBack,
+  onNext,
+}: {
   currentStep: number
   isFinishing: boolean
   finishError: string | null
   onBack: () => void
   onNext: () => void
   onFinish: (destination: '/dashboard' | '/chat' | '/goals') => Promise<void>
-}
-
-function WizardFooter({
-  currentStep,
-  isFinishing,
-  onBack,
-  onNext,
-}: WizardFooterProps) {
+}) {
   return (
     <div
       className="mt-6 flex items-center justify-between border-t pt-4"
@@ -465,30 +484,14 @@ function WizardFooter({
   )
 }
 
-// ─── Step transition wrapper ──────────────────────────────────────────────────
-interface StepTransitionProps {
-  stepKey: string
-  children: React.ReactNode
-}
-
-function StepTransition({ stepKey, children }: StepTransitionProps) {
+// ─── Step transition ──────────────────────────────────────────────────────────
+function StepTransition({ stepKey, children }: { stepKey: string; children: React.ReactNode }) {
   return (
-    <div
-      key={stepKey}
-      style={{
-        animation: 'stepFadeIn var(--pz-dur-base) var(--pz-ease) both',
-      }}
-    >
+    <div key={stepKey} style={{ animation: 'stepFadeIn var(--pz-dur-base) var(--pz-ease) both' }}>
       <style>{`
         @keyframes stepFadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(8px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+          from { opacity: 0; transform: translateY(8px); }
+          to { opacity: 1; transform: translateY(0); }
         }
       `}</style>
       {children}

@@ -1,6 +1,9 @@
 import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
 import { getUserByClerkId, getUsersByCompany } from '@/lib/db/users'
+import { getPendingInvitesByInviter, getPendingInviteByInvitee } from '@/lib/db/invites'
+import { TeamInvitePanel } from '@/components/team/team-invite-panel'
+import { PendingConnections } from '@/components/team/pending-connections'
 import type { User } from '@/types'
 
 function getInitials(name: string): string {
@@ -27,37 +30,64 @@ export default async function TeamDirectoryPage() {
   const user = await getUserByClerkId(userId)
   if (!user) redirect('/sign-in')
 
-  const teamMembers = await getUsersByCompany(user.company_id)
+  const [teamMembers, pendingAsInviter, pendingAsInvitee] = await Promise.all([
+    getUsersByCompany(user.company_id),
+    user.company_id ? getPendingInvitesByInviter(user.id) : Promise.resolve([]),
+    getPendingInviteByInvitee(user.id),
+  ])
+
   const memberMap = new Map(teamMembers.map((m) => [m.id, m]))
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-        <h1
-          style={{
-            fontSize: '24px',
-            fontWeight: 700,
-            color: 'var(--pz-fg-1)',
-            margin: 0,
-          }}
-        >
-          Meeskond
-        </h1>
-        <span
-          style={{
-            fontSize: '13px',
-            fontWeight: 600,
-            color: 'var(--pz-violet)',
-            background: 'rgba(96,48,255,0.08)',
-            border: '1px solid rgba(96,48,255,0.18)',
-            borderRadius: 'var(--pz-radius-pill)',
-            padding: '2px 10px',
-          }}
-        >
-          {teamMembers.length} liiget
-        </span>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <h1 style={{ fontSize: '24px', fontWeight: 700, color: 'var(--pz-fg-1)', margin: 0 }}>
+            Meeskond
+          </h1>
+          <span
+            style={{
+              fontSize: '13px',
+              fontWeight: 600,
+              color: 'var(--pz-violet)',
+              background: 'rgba(96,48,255,0.08)',
+              border: '1px solid rgba(96,48,255,0.18)',
+              borderRadius: 'var(--pz-radius-pill)',
+              padding: '2px 10px',
+            }}
+          >
+            {teamMembers.length} liiget
+          </span>
+        </div>
+        {user.company_id && <TeamInvitePanel />}
       </div>
 
+      {/* Pending connections — as invitee */}
+      {pendingAsInvitee && (
+        <PendingConnections
+          mode="invitee"
+          items={[{
+            token: pendingAsInvitee.token,
+            otherName: pendingAsInvitee.inviter.name,
+            otherRole: pendingAsInvitee.invitee_role === 'team_member' ? 'manager' : 'team_member',
+          }]}
+        />
+      )}
+
+      {/* Pending connections — as inviter */}
+      {pendingAsInviter.length > 0 && (
+        <PendingConnections
+          mode="inviter"
+          items={pendingAsInviter.map((inv) => ({
+            token: inv.token,
+            otherName: inv.invitee?.name ?? inv.invitee?.email ?? 'Tundmatu',
+            otherRole: inv.invitee_role,
+          }))}
+        />
+      )}
+
+      {/* Team grid */}
       <div
         style={{
           display: 'grid',
@@ -101,7 +131,6 @@ export default async function TeamDirectoryPage() {
                 >
                   {getInitials(member.name)}
                 </div>
-
                 <div>
                   <div style={{ fontWeight: 700, fontSize: '16px', color: 'var(--pz-fg-1)', marginBottom: '4px' }}>
                     {member.name}
@@ -120,7 +149,6 @@ export default async function TeamDirectoryPage() {
                     {member.email}
                   </div>
                 </div>
-
                 <span
                   style={{
                     fontSize: '11px',

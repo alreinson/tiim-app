@@ -3,7 +3,11 @@ import { auth } from '@clerk/nextjs/server'
 import { getUserByClerkId } from '@/lib/db/users'
 import { OnboardingWizard } from '@/components/onboarding/onboarding-wizard'
 
-export default async function OnboardingPage() {
+export default async function OnboardingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ invite?: string }>
+}) {
   const { userId } = await auth()
 
   if (!userId) {
@@ -13,7 +17,6 @@ export default async function OnboardingPage() {
   const user = await getUserByClerkId(userId)
 
   if (!user) {
-    // User record not yet created (webhook lag) — redirect to sign-in for retry
     redirect('/sign-in')
   }
 
@@ -21,5 +24,7 @@ export default async function OnboardingPage() {
     redirect('/dashboard')
   }
 
-  return <OnboardingWizard user={user} />
+  const { invite } = await searchParams
+
+  return <OnboardingWizard user={user} inviteToken={invite} />
 }
