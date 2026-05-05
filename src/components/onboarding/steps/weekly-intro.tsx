@@ -22,7 +22,7 @@ const CHECKIN_TOPICS = [
   },
   {
     icon: '🚧',
-    label: 'Blokeerijaid',
+    label: 'Blokkerid',
     description: 'Mis takistab sind? Juht saab aidata.',
   },
   {
@@ -68,7 +68,7 @@ export function WeeklyIntro({ onNext }: WeeklyIntroProps) {
           Mis toimub igal nädalal?
         </h2>
         <p className="text-sm" style={{ color: 'var(--pz-fg-3)' }}>
-          Nädala sisseregistreerimine võtab tavaliselt{' '}
+          Nädala kokkuvõtte tegemine võtab tavaliselt{' '}
           <strong>5–10 minutit</strong>. Saad seda teha millal tahad — AI hoiab
           selle kiire ja lihtsa.
         </p>
@@ -106,7 +106,7 @@ export function WeeklyIntro({ onNext }: WeeklyIntroProps) {
         </span>
         <p className="text-sm" style={{ color: 'var(--pz-fg-1)' }}>
           AI koostab kokkuvõtte ja esitab selle sulle ülevaatamiseks. Saad
-          muuta, lisada või lihtsalt kinnitada — siis on sisseregistreerimine
+          muuta, lisada või lihtsalt kinnitada — siis on nädala kokkuvõte
           tehtud.
         </p>
       </div>

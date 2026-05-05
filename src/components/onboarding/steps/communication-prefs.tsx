@@ -21,7 +21,7 @@ const FEEDBACK_OPTIONS: Array<{
 }> = [
   {
     value: 'direct',
-    label: 'Otsene',
+    label: 'Otsekohene',
     description: 'Ütle mulle otse, mida parandada.',
   },
   {
@@ -74,7 +74,7 @@ export function CommunicationPrefs({ value, onChange }: CommunicationPrefsProps)
           className="block text-sm font-semibold"
           style={{ color: 'var(--pz-fg-1)' }}
         >
-          Mis toetusviis sobib sulle?
+          Mis toetusviis sulle kõige paremini sobiks?
         </label>
 
         <div className="mt-4 flex flex-col gap-3">
