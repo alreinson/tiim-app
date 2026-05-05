@@ -26,7 +26,7 @@ export function HowChatWorks({ onNext }: HowChatWorksProps) {
       <ol className="flex flex-col gap-3">
         <ChatStep
           step={1}
-          label="Sina rääkid"
+          label="Sina räägid"
           description="Kirjuta vabas vormis või kasuta mikrofoni. Ütle, mis sul nädalal toimus."
         />
         <ChatStep
@@ -68,7 +68,7 @@ export function HowChatWorks({ onNext }: HowChatWorksProps) {
           pooleli (blokeerija?) · ⚡ Energia: hea. Kas midagi on veel lisada?
         </ChatBubble>
 
-        <ChatBubble role="user">Ei, see on täpne.</ChatBubble>
+        <ChatBubble role="user">Ei, see on kõik.</ChatBubble>
 
         <div
           className="rounded-lg px-3 py-2 text-xs"
