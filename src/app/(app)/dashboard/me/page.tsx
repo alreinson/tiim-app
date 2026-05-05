@@ -6,9 +6,11 @@ import { getGoalsByOwner } from '@/lib/db/goals'
 import { getCheckinsByUser } from '@/lib/db/checkins'
 import { getBlockersByUser } from '@/lib/db/blockers'
 import { getShoutoutsForUser } from '@/lib/db/shoutouts'
+import { getUnannouncedAchievements } from '@/lib/db/achievements'
 import { StatCard } from '@/components/dashboard/stat-card'
 import { GoalProgressBar } from '@/components/goals/goal-progress-bar'
 import { StatusBadge } from '@/components/goals/status-badge'
+import { AchievementBanner } from '@/components/dashboard/achievement-banner'
 import type { GoalLevel, GoalType } from '@/types'
 
 function getCurrentWeek(): string {
@@ -49,11 +51,12 @@ export default async function MeDashboardPage() {
 
   const currentWeek = getCurrentWeek()
 
-  const [goals, checkins, blockers, shoutouts] = await Promise.all([
+  const [goals, checkins, blockers, shoutouts, unannouncedAchievements] = await Promise.all([
     getGoalsByOwner(user.id),
     getCheckinsByUser(user.id, 5),
     getBlockersByUser(user.id),
     getShoutoutsForUser(user.id, 3),
+    getUnannouncedAchievements(user.id),
   ])
 
   const thisWeekCheckin = checkins.find((c) => c.week === currentWeek) ?? null
@@ -62,6 +65,11 @@ export default async function MeDashboardPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--pz-s-8)' }}>
+      {/* Achievement banners */}
+      {unannouncedAchievements.length > 0 && (
+        <AchievementBanner achievements={unannouncedAchievements} />
+      )}
+
       {/* Page header */}
       <div>
         <h1
