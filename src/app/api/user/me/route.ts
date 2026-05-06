@@ -30,12 +30,17 @@ export async function PATCH(request: Request): Promise<Response> {
     const user = await getUserByClerkId(userId)
     if (!user) return Response.json({ error: 'User not found' }, { status: 404 })
 
-    const { role } = await request.json()
-    if (!['team_member', 'manager'].includes(role)) {
-      return Response.json({ error: 'role must be team_member or manager' }, { status: 400 })
+    // Only admins may change roles — roles are assigned through the invite flow
+    if (user.role !== 'admin') {
+      return Response.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    const updated = await updateUser(user.id, { role })
+    const { targetUserId, role } = await request.json()
+    if (!targetUserId || !['team_member', 'manager'].includes(role)) {
+      return Response.json({ error: 'targetUserId and valid role are required' }, { status: 400 })
+    }
+
+    const updated = await updateUser(targetUserId, { role })
     return Response.json(updated)
   } catch (err) {
     console.error('[api/user/me] PATCH error:', err)

@@ -52,7 +52,7 @@ export async function getUnannouncedAchievements(
   return (data ?? []) as { id: string; code: AchievementCode; earned_at: string }[]
 }
 
-export async function markAchievementsAnnounced(ids: string[]): Promise<void> {
+export async function markAchievementsAnnounced(ids: string[], userId: string): Promise<void> {
   if (ids.length === 0) return
   const supabase = await createServiceClient()
 
@@ -60,6 +60,7 @@ export async function markAchievementsAnnounced(ids: string[]): Promise<void> {
     .from('achievements')
     .update({ announced: true })
     .in('id', ids)
+    .eq('user_id', userId)
 
   if (error) throw new Error(`Failed to mark achievements announced: ${error.message}`)
 }
