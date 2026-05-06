@@ -6,6 +6,7 @@ import { getGoalsByCompany } from '@/lib/db/goals'
 import { getCheckinsByCompany } from '@/lib/db/checkins'
 import { getActiveBlockersByCompany } from '@/lib/db/blockers'
 import { getNewsByCompany } from '@/lib/db/news'
+import { getStreaksByUserIds } from '@/lib/db/streaks'
 import { TeamDashboardClient } from '@/components/dashboard/team-dashboard-client'
 import { AnnouncementsFeed } from '@/components/shared/announcements-feed'
 import { PendingProposals } from '@/components/goals/pending-proposals'
@@ -69,6 +70,8 @@ export default async function TeamDashboardPage() {
     getCheckinsByCompany(user.company_id),
   ])
 
+  const streakMap = await getStreaksByUserIds(teamMembers.map((m) => m.id))
+
   const myThisWeekCheckin = myCheckins.find((c) => c.user_id === user.id) ?? null
   const checkedInUserIds = weekCheckins.map((c) => c.user_id)
   const onTrackGoals = goals.filter((g) => g.status === 'on_track' || g.status === 'done').length
@@ -88,7 +91,7 @@ export default async function TeamDashboardPage() {
         energy:   latestCheckin?.energy   ?? null,
         workload: latestCheckin?.workload ?? null,
         checkedIn: checkedInUserIds.includes(m.id),
-        streak: 0, // would need streak table query; placeholder
+        streak: streakMap[m.id] ?? 0,
         blockerCount: activeBlockers.filter((b) => b.user_id === m.id).length,
         avatarGradient: getAvatarGradient(m.id),
       }

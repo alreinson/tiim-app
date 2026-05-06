@@ -8,6 +8,22 @@ function getPrevWeek(week: string): string {
   return `${year}-W${String(w - 1).padStart(2, '0')}`
 }
 
+export async function getStreaksByUserIds(userIds: string[]): Promise<Record<string, number>> {
+  if (userIds.length === 0) return {}
+  const supabase = await createServiceClient()
+  const { data, error } = await supabase
+    .from('streaks')
+    .select('user_id, current_streak')
+    .in('user_id', userIds)
+  if (error) throw new Error(`Failed to fetch streaks: ${error.message}`)
+  const map: Record<string, number> = {}
+  for (const row of data ?? []) {
+    map[(row as { user_id: string; current_streak: number }).user_id] =
+      (row as { user_id: string; current_streak: number }).current_streak
+  }
+  return map
+}
+
 export async function upsertStreak(
   userId: string,
   currentWeek: string

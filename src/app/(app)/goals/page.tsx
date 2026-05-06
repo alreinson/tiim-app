@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { getUser } from '@/lib/auth/session'
 import { getGoalsByCompany } from '@/lib/db/goals'
 import { getLatestCheckinByUser } from '@/lib/db/checkins'
+import { getUsersByCompany } from '@/lib/db/users'
 import { GoalProgressBar } from '@/components/goals/goal-progress-bar'
 import { StatusBadge } from '@/components/goals/status-badge'
 import { AddGoalButton } from '@/components/goals/add-goal-button'
@@ -37,10 +38,10 @@ function InlineBadge({ cfg }: { cfg: { label: string; color: string; bg: string 
   )
 }
 
-function GoalCard({ goal, indent = false }: { goal: Goal; indent?: boolean }) {
+function GoalCard({ goal, indent = false, userMap }: { goal: Goal; indent?: boolean; userMap: Record<string, string> }) {
   const levelCfg = LEVEL_BADGE[goal.level]
   const typeCfg = TYPE_BADGE[goal.type]
-  const ownerLabel = goal.owner_id ? goal.owner_id.slice(0, 8) : 'Määramata'
+  const ownerLabel = goal.owner_id ? (userMap[goal.owner_id] ?? goal.owner_id.slice(0, 8)) : 'Määramata'
 
   return (
     <div
@@ -110,10 +111,16 @@ export default async function GoalsPage() {
   const user = await getUser()
   if (!user) redirect('/sign-in')
 
-  const [allGoals, latestCheckin] = await Promise.all([
+  const [allGoals, latestCheckin, companyUsers] = await Promise.all([
     getGoalsByCompany(user.company_id),
     getLatestCheckinByUser(user.id),
+    getUsersByCompany(user.company_id),
   ])
+
+  const userMap: Record<string, string> = {}
+  for (const u of companyUsers) {
+    userMap[u.id] = u.name
+  }
 
   const proposals = latestCheckin?.pending_ai_actions ?? []
 
@@ -215,9 +222,9 @@ export default async function GoalsPage() {
             const children = childrenOf(yearly.id)
             return (
               <div key={yearly.id} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--pz-s-3)' }}>
-                <GoalCard goal={yearly} />
+                <GoalCard goal={yearly} userMap={userMap} />
                 {children.map((child) => (
-                  <GoalCard key={child.id} goal={child} indent />
+                  <GoalCard key={child.id} goal={child} indent userMap={userMap} />
                 ))}
               </div>
             )
@@ -239,7 +246,7 @@ export default async function GoalsPage() {
                 Seostamata kvartalieesmärgid
               </p>
               {orphanQuarterly.map((goal) => (
-                <GoalCard key={goal.id} goal={goal} />
+                <GoalCard key={goal.id} goal={goal} userMap={userMap} />
               ))}
             </div>
           )}
