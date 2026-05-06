@@ -1,15 +1,20 @@
 import { redirect } from 'next/navigation'
 import { getUser } from '@/lib/auth/session'
+import { getCompany } from '@/lib/db/companies'
 import { LanguageProvider } from '@/context/language-context'
-import { TopNav } from '@/components/shared/top-nav'
+import { Sidebar, TopBar } from '@/components/shared/sidebar'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   let dbUser = null
+  let company = null
+
   try {
     dbUser = await getUser()
+    if (dbUser) {
+      company = await getCompany(dbUser.company_id)
+    }
   } catch (e) {
     if ((e as { digest?: string }).digest?.startsWith('NEXT_REDIRECT')) throw e
-    // DB unreachable — render a friendly error rather than crashing
     return (
       <div
         style={{
@@ -18,7 +23,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           alignItems: 'center',
           justifyContent: 'center',
           background: 'var(--pz-grad-app-bg)',
-          fontFamily: 'var(--font-inter), Inter, sans-serif',
         }}
       >
         <div
@@ -33,11 +37,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           }}
         >
           <p style={{ color: 'var(--pz-fg-1)', fontWeight: 600, marginBottom: '8px' }}>
-            {/* TODO: i18n */}
             Ühenduse viga
           </p>
           <p style={{ color: 'var(--pz-fg-3)', fontSize: '14px' }}>
-            {/* TODO: i18n */}
             Andmebaasiga ühenduse loomine ebaõnnestus. Palun proovi uuesti.
           </p>
         </div>
@@ -45,7 +47,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     )
   }
 
-  // ── Webhook not yet fired — user not in DB ─────────────────────────────────
   if (!dbUser) {
     return (
       <div
@@ -55,7 +56,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           alignItems: 'center',
           justifyContent: 'center',
           background: 'var(--pz-grad-app-bg)',
-          fontFamily: 'var(--font-inter), Inter, sans-serif',
         }}
       >
         <div
@@ -69,7 +69,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             maxWidth: '400px',
           }}
         >
-          {/* Spinner */}
           <div
             style={{
               width: '36px',
@@ -83,11 +82,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           />
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
           <p style={{ color: 'var(--pz-fg-1)', fontWeight: 600, marginBottom: '8px' }}>
-            {/* TODO: i18n */}
             Konto seadistatakse…
           </p>
           <p style={{ color: 'var(--pz-fg-3)', fontSize: '14px' }}>
-            {/* TODO: i18n */}
             Palun oota hetk. Lehekülg laadib automaatselt.
           </p>
         </div>
@@ -95,48 +92,40 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     )
   }
 
-  // ── Onboarding gate ────────────────────────────────────────────────────────
   if (!dbUser.onboarding_complete) {
     redirect('/onboarding')
   }
 
-  // ── Render app shell ───────────────────────────────────────────────────────
   return (
     <LanguageProvider initialLanguage={dbUser.language}>
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          minHeight: '100vh',
-          // Page background must never be pure white per design spec
-          background: 'var(--pz-grad-app-bg)',
-        }}
-      >
-        <TopNav user={dbUser} />
+      <div style={{ display: 'flex', minHeight: '100vh' }}>
+        <Sidebar user={dbUser} companyName={company?.name} />
 
-        <main
-          style={{
-            flex: 1,
-            minHeight: 'calc(100vh - 60px)',
-            padding: '32px',
-            // Center content with max width
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-          }}
-        >
-          <div
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+          <TopBar user={dbUser} companyName={company?.name} />
+
+          <main
             style={{
-              width: '100%',
-              maxWidth: '1280px',
               flex: 1,
+              padding: '32px',
               display: 'flex',
               flexDirection: 'column',
+              alignItems: 'center',
             }}
           >
-            {children}
-          </div>
-        </main>
+            <div
+              style={{
+                width: '100%',
+                maxWidth: '1280px',
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+              }}
+            >
+              {children}
+            </div>
+          </main>
+        </div>
       </div>
     </LanguageProvider>
   )

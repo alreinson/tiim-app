@@ -1,11 +1,18 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { Inter, Poppins } from 'next/font/google'
 import { ClerkProvider } from '@clerk/nextjs'
 import './globals.css'
 
 const inter = Inter({
   variable: '--font-inter',
   subsets: ['latin', 'latin-ext'],
+})
+
+const poppins = Poppins({
+  variable: '--font-poppins',
+  subsets: ['latin'],
+  weight: ['600', '700'],
+  display: 'swap',
 })
 
 export const metadata: Metadata = {
@@ -16,7 +23,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <ClerkProvider>
-      <html lang="et" className={`${inter.variable} h-full antialiased`}>
+      <html lang="et" className={`${inter.variable} ${poppins.variable} h-full antialiased`}>
         <head>
           <link rel="preconnect" href="https://rsms.me" />
           <link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
