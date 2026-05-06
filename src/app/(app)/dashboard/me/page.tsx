@@ -62,6 +62,12 @@ export default async function MeDashboardPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--pz-s-8)' }}>
+      {/* DEV: view toggle */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px', background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: 'var(--pz-radius-pill)', alignSelf: 'flex-start' }}>
+        <span style={{ fontSize: '12px', color: '#92400E', fontWeight: 500 }}>Vaatad: tiimiliige</span>
+        <Link href="/dashboard/team" style={{ fontSize: '12px', color: '#6030FF', fontWeight: 600, textDecoration: 'none' }}>→ Vaata juhi vaadet</Link>
+      </div>
+
       {/* Achievement banners */}
       {unannouncedAchievements.length > 0 && (
         <AchievementBanner achievements={unannouncedAchievements} />

@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { getUser } from '@/lib/auth/session'
 import { getUsersByCompany } from '@/lib/db/users'
 import { getGoalsByCompany } from '@/lib/db/goals'
@@ -38,8 +39,6 @@ export default async function TeamDashboardPage() {
   const user = await getUser()
   if (!user) redirect('/sign-in')
 
-  if (user.role === 'team_member') redirect('/dashboard/me')
-
   const currentWeek = getCurrentWeek()
 
   const [teamMembers, weekCheckins, activeBlockers, recentShoutouts, goals] = await Promise.all([
@@ -69,6 +68,12 @@ export default async function TeamDashboardPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+      {/* DEV: view toggle */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: 'var(--pz-radius-pill)', alignSelf: 'flex-start' }}>
+        <span style={{ fontSize: '12px', color: '#166534', fontWeight: 500 }}>Vaatad: juhi vaade</span>
+        <Link href="/dashboard/me" style={{ fontSize: '12px', color: '#6030FF', fontWeight: 600, textDecoration: 'none' }}>→ Vaata tiimiliikme vaadet</Link>
+      </div>
+
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px', flexWrap: 'wrap' }}>
         <h1
           style={{
