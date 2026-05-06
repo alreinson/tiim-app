@@ -13,7 +13,7 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   const transcript = messages
-    .map((m: { role: string; content: string }) => `${m.role === 'user' ? 'Kasutaja' : 'Tiim AI'}: ${m.content}`)
+    .map((m: { role: string; content: string }) => `${m.role === 'user' ? 'Kasutaja' : 'tiim.space'}: ${m.content}`)
     .join('\n')
 
   try {

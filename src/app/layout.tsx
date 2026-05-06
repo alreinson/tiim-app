@@ -9,7 +9,7 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: 'Tiim.app',
+  title: 'tiim.space',
   description: 'Team check-ins and goal tracking, AI-assisted.',
 }
 

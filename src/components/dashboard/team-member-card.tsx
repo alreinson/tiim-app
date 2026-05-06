@@ -1,15 +1,10 @@
 import type { User } from '@/types'
+import { getAvatarGradient, getInitials } from '@/lib/avatar'
 
 interface TeamMemberCardProps {
   member: User
   hasCheckedInThisWeek: boolean
   activeBlockerCount: number
-}
-
-function getInitials(name: string): string {
-  const parts = name.trim().split(/\s+/)
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
-  return (parts[0][0] + parts[1][0]).toUpperCase()
 }
 
 function getRoleLabel(role: User['role']): string {
@@ -38,7 +33,7 @@ export function TeamMemberCard({ member, hasCheckedInThisWeek, activeBlockerCoun
             width: '44px',
             height: '44px',
             borderRadius: '50%',
-            background: 'var(--pz-grad-primary)',
+            background: getAvatarGradient(member.id),
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',

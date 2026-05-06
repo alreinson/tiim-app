@@ -215,12 +215,55 @@ export function ChatClient({ userName: _userName, userRole, hasCheckedInThisWeek
   const [submitting, setSubmitting] = useState(false)
   const [saved, setSaved] = useState(false)
 
+  const [isRecording, setIsRecording] = useState(false)
+  const [isTranscribing, setIsTranscribing] = useState(false)
+  const mediaRef = useRef<MediaRecorder | null>(null)
+  const chunksRef = useRef<Blob[]>([])
+
   const endRef = useRef<HTMLDivElement>(null)
   const isManager = userRole === 'manager' || userRole === 'admin'
   const showCheckinUI = !hasCheckedInThisWeek && !saved
 
   function scrollToBottom() {
     setTimeout(() => endRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
+  }
+
+  async function startRecording() {
+    setError(null)
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      chunksRef.current = []
+      const recorder = new MediaRecorder(stream)
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data) }
+      recorder.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop())
+        const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
+        setIsTranscribing(true)
+        try {
+          const fd = new FormData()
+          fd.append('audio', blob)
+          const res = await fetch('/api/checkins/transcribe', { method: 'POST', body: fd })
+          if (!res.ok) throw new Error('Transcription failed')
+          const { transcript } = await res.json()
+          if (transcript) setInput((prev) => prev ? `${prev} ${transcript}` : transcript)
+        } catch {
+          setError('Hääle transkribeerimine ebaõnnestus. Proovi uuesti.')
+        } finally {
+          setIsTranscribing(false)
+        }
+      }
+      recorder.start()
+      mediaRef.current = recorder
+      setIsRecording(true)
+    } catch {
+      setError('Mikrofoni juurdepääs keelatud. Kontrolli brauseri luba.')
+    }
+  }
+
+  function stopRecording() {
+    mediaRef.current?.stop()
+    mediaRef.current = null
+    setIsRecording(false)
   }
 
   async function sendMessage() {
@@ -327,12 +370,26 @@ export function ChatClient({ userName: _userName, userRole, hasCheckedInThisWeek
         }),
       })
       if (!res.ok) throw new Error('Save failed')
+      const { checkin } = await res.json()
       setSaved(true)
       setPpp(null)
       setMessages([{
         role: 'assistant',
         content: 'Sinu sisselogimine on salvestatud! Hea nädal! 🎉',
       }])
+      // Fire goal-matching in background — proposals appear on goals page
+      if (checkin?.id) {
+        fetch('/api/checkins/match-goals', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            checkin_id: checkin.id,
+            progress: ppp?.progress,
+            plans: ppp?.plans,
+            problems: ppp?.problems,
+          }),
+        }).catch(() => { /* non-critical */ })
+      }
     } catch {
       setError('Sisselogimise salvestamine ebaõnnestus.')
     } finally {
@@ -344,7 +401,7 @@ export function ChatClient({ userName: _userName, userRole, hasCheckedInThisWeek
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 120px)', maxWidth: '720px', margin: '0 auto' }}>
       {/* Header */}
       <div style={{ marginBottom: '12px', flexShrink: 0 }}>
-        <h1 style={{ fontSize: '26px', fontWeight: 700, color: 'var(--pz-fg-1)', margin: '0 0 4px' }}>Tiim AI</h1>
+        <h1 style={{ fontSize: '26px', fontWeight: 700, color: 'var(--pz-fg-1)', margin: '0 0 4px' }}>tiim.space</h1>
         <p style={{ margin: 0, fontSize: '14px', color: 'var(--pz-fg-3)' }}>Sinu isiklik meeskonna treener</p>
       </div>
 
@@ -403,23 +460,42 @@ export function ChatClient({ userName: _userName, userRole, hasCheckedInThisWeek
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() } }}
-            placeholder="Kirjuta sõnum… (Enter saadab)"
+            placeholder={isTranscribing ? 'Transkribeerin…' : 'Kirjuta sõnum… (Enter saadab)'}
             rows={1}
-            disabled={isStreaming}
+            disabled={isStreaming || isRecording}
             style={{
               flex: 1, border: 'none', outline: 'none', resize: 'none',
               fontSize: '14px', color: 'var(--pz-fg-1)', background: 'transparent',
               fontFamily: 'inherit', lineHeight: 1.5, maxHeight: '120px', overflowY: 'auto',
             }}
           />
+          {/* Mic button */}
           <button
-            onClick={sendMessage}
-            disabled={!input.trim() || isStreaming}
+            onClick={isRecording ? stopRecording : startRecording}
+            disabled={isStreaming || isTranscribing}
+            title={isRecording ? 'Peata salvestamine' : 'Räägi'}
             style={{
               width: '36px', height: '36px', borderRadius: '50%',
-              background: !input.trim() || isStreaming ? 'var(--pz-border)' : 'var(--pz-grad-primary)',
+              background: isRecording ? 'var(--pz-danger)' : 'transparent',
+              border: `1.5px solid ${isRecording ? 'var(--pz-danger)' : 'var(--pz-border)'}`,
+              color: isRecording ? '#fff' : 'var(--pz-fg-3)',
+              fontSize: '16px', cursor: isStreaming || isTranscribing ? 'not-allowed' : 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+              opacity: isStreaming || isTranscribing ? 0.4 : 1,
+              transition: 'all var(--pz-dur-base)',
+            }}
+          >
+            {isRecording ? '⏹' : '🎙'}
+          </button>
+          {/* Send button */}
+          <button
+            onClick={sendMessage}
+            disabled={!input.trim() || isStreaming || isRecording}
+            style={{
+              width: '36px', height: '36px', borderRadius: '50%',
+              background: !input.trim() || isStreaming || isRecording ? 'var(--pz-border)' : 'var(--pz-grad-primary)',
               border: 'none', color: '#fff', fontSize: '16px',
-              cursor: !input.trim() || isStreaming ? 'not-allowed' : 'pointer',
+              cursor: !input.trim() || isStreaming || isRecording ? 'not-allowed' : 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
             }}
           >
@@ -449,6 +525,7 @@ export function ChatClient({ userName: _userName, userRole, hasCheckedInThisWeek
 
       <style>{`
         @keyframes bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-6px)} }
+        @keyframes pulse-rec { 0%,100%{opacity:1} 50%{opacity:0.5} }
       `}</style>
     </div>
   )

@@ -1,9 +1,11 @@
 import { redirect } from 'next/navigation'
 import { getUser } from '@/lib/auth/session'
 import { getGoalsByCompany } from '@/lib/db/goals'
+import { getLatestCheckinByUser } from '@/lib/db/checkins'
 import { GoalProgressBar } from '@/components/goals/goal-progress-bar'
 import { StatusBadge } from '@/components/goals/status-badge'
 import { AddGoalButton } from '@/components/goals/add-goal-button'
+import { PendingProposals } from '@/components/goals/pending-proposals'
 import type { Goal, GoalLevel, GoalType } from '@/types'
 
 const LEVEL_BADGE: Record<GoalLevel, { label: string; color: string; bg: string }> = {
@@ -108,7 +110,12 @@ export default async function GoalsPage() {
   const user = await getUser()
   if (!user) redirect('/sign-in')
 
-  const allGoals = await getGoalsByCompany(user.company_id)
+  const [allGoals, latestCheckin] = await Promise.all([
+    getGoalsByCompany(user.company_id),
+    getLatestCheckinByUser(user.id),
+  ])
+
+  const proposals = latestCheckin?.pending_ai_actions ?? []
 
   const yearlyGoals = allGoals.filter((g) => g.level === 'yearly')
   const quarterlyGoals = allGoals.filter((g) => g.level === 'quarterly')
@@ -150,6 +157,11 @@ export default async function GoalsPage() {
         </div>
         <AddGoalButton />
       </div>
+
+      {/* AI pending proposals */}
+      {proposals.length > 0 && latestCheckin && (
+        <PendingProposals checkinId={latestCheckin.id} proposals={proposals} />
+      )}
 
       {/* Filter row — visual only */}
       <div

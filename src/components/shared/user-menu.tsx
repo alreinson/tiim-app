@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { LanguageToggle } from '@/components/shared/language-toggle'
 import type { User, UserRole } from '@/types'
+import { getAvatarGradient, getInitials } from '@/lib/avatar'
 
 // ── Label helpers ─────────────────────────────────────────────────────────────
 
@@ -27,15 +28,6 @@ const ROLE_COLORS: Record<UserRole, string> = {
   team_member: 'var(--pz-fg-3)',
   manager: 'var(--pz-violet)',
   admin: 'var(--pz-fuchsia)',
-}
-
-function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .map((part) => part[0] ?? '')
-    .join('')
-    .toUpperCase()
-    .slice(0, 2)
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -78,7 +70,7 @@ export function UserMenu({ user }: UserMenuProps) {
         <Avatar size="sm">
           <AvatarFallback
             style={{
-              background: 'var(--pz-grad-primary)',
+              background: getAvatarGradient(user.id),
               color: '#fff',
               fontSize: '11px',
               fontWeight: 700,

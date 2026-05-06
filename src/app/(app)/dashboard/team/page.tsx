@@ -9,6 +9,8 @@ import { getShoutoutsByCompany } from '@/lib/db/shoutouts'
 import { getNewsByCompany } from '@/lib/db/news'
 import { TeamMemberCard } from '@/components/dashboard/team-member-card'
 import { AnnouncementsFeed } from '@/components/shared/announcements-feed'
+import { DashboardTabs } from '@/components/dashboard/dashboard-tabs'
+import { HistoryTimeline } from '@/components/dashboard/history-timeline'
 import type { SupportType } from '@/types'
 
 function getCurrentWeek(): string {
@@ -43,7 +45,7 @@ export default async function TeamDashboardPage() {
 
   const currentWeek = getCurrentWeek()
 
-  const [teamMembers, weekCheckins, activeBlockers, recentShoutouts, goals, myCheckins, newsItems] = await Promise.all([
+  const [teamMembers, weekCheckins, activeBlockers, recentShoutouts, goals, myCheckins, newsItems, historyCheckins] = await Promise.all([
     getUsersByCompany(user.company_id),
     getCheckinsByCompany(user.company_id, currentWeek),
     getActiveBlockersByCompany(user.company_id),
@@ -51,9 +53,14 @@ export default async function TeamDashboardPage() {
     getGoalsByCompany(user.company_id),
     getCheckinsByUser(user.id, 1),
     getNewsByCompany(user.company_id),
+    getCheckinsByCompany(user.company_id),  // all weeks for history
   ])
 
   const myThisWeekCheckin = myCheckins[0]?.week === currentWeek ? myCheckins[0] : null
+
+  const timelineCheckins = historyCheckins
+    .map((c) => ({ ...c, member: { id: c.user.id, name: c.user.name } }))
+    .slice(0, 100) // cap for performance
 
   const checkedInUserIds = new Set(weekCheckins.map((c) => c.user_id))
   const memberCount = teamMembers.filter((m) => m.id !== user.id).length
@@ -74,7 +81,6 @@ export default async function TeamDashboardPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-      {/* DEV: view toggle */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: 'var(--pz-radius-pill)', alignSelf: 'flex-start' }}>
         <span style={{ fontSize: '12px', color: '#166534', fontWeight: 500 }}>Vaatad: juhi vaade</span>
         <Link href="/dashboard/me" style={{ fontSize: '12px', color: '#6030FF', fontWeight: 600, textDecoration: 'none' }}>→ Vaata tiimiliikme vaadet</Link>
@@ -397,8 +403,14 @@ export default async function TeamDashboardPage() {
         </section>
       )}
 
-      {/* Announcements */}
-      <AnnouncementsFeed initialItems={newsItems} canPin={true} />
+      {/* Tabs: Overview / History */}
+      <DashboardTabs tabs={[{ id: 'overview', label: 'Ülevaade' }, { id: 'history', label: 'Ajalugu' }]}>
+        {/* Overview tab */}
+        <AnnouncementsFeed initialItems={newsItems} canPin={true} />
+
+        {/* History tab */}
+        <HistoryTimeline checkins={timelineCheckins} />
+      </DashboardTabs>
     </div>
   )
 }

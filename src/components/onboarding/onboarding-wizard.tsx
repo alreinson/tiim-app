@@ -277,7 +277,7 @@ export function OnboardingWizard({ user, inviteToken: propToken }: OnboardingWiz
       </div>
 
       <p className="mt-8 text-xs" style={{ color: 'var(--pz-fg-3)' }}>
-        Tiim.app · Aus AI meeskonnatoe jaoks
+        tiim.space · Aus AI meeskonnatoe jaoks
       </p>
     </div>
   )

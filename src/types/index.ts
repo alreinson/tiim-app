@@ -72,6 +72,15 @@ export interface CheckinSharing {
   problems: number[]
 }
 
+export interface GoalProposal {
+  goal_id: string
+  goal_title: string
+  proposed_status: GoalStatus
+  proposed_progress?: number   // 0–100
+  confidence: 'high' | 'low'
+  source_text: string          // the snippet from the check-in that triggered this
+}
+
 export interface Checkin {
   id: string
   user_id: string
@@ -85,6 +94,7 @@ export interface Checkin {
   mood?: number           // 1–5
   energy?: number         // 1–5
   workload?: number       // 1–5
+  pending_ai_actions?: GoalProposal[]
   approved: boolean
   approved_at?: string
   created_at: string

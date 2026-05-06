@@ -498,7 +498,7 @@ export default function NewCheckinPage() {
                   color: 'var(--pz-violet)',
                 }}
               >
-                Tiim AI kokkuvõte
+                tiim.space kokkuvõte
               </p>
               <p style={{ margin: 0, fontSize: '14px', color: 'var(--pz-fg-2)', lineHeight: 1.6 }}>
                 {aiSummary.summary}

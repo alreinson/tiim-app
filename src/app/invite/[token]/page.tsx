@@ -111,7 +111,7 @@ export default function InvitePage() {
             letterSpacing: '-0.02em',
           }}
         >
-          Tiim
+          tiim.space
         </span>
       </div>
 
@@ -147,7 +147,7 @@ export default function InvitePage() {
               margin: '0 0 6px',
             }}
           >
-            Sind on kutsutud Tiim.app-i
+            Sind on kutsutud tiim.space'i
           </h1>
           <p style={{ margin: 0, fontSize: '14px', color: 'var(--pz-fg-3)' }}>
             <strong style={{ color: 'var(--pz-fg-2)' }}>{invite.inviter_name}</strong> kutsub sind
@@ -254,7 +254,7 @@ export default function InvitePage() {
       </div>
 
       <p style={{ marginTop: '24px', fontSize: '12px', color: 'var(--pz-fg-3)' }}>
-        Tiim.app · Aus AI meeskonnatoe jaoks
+        tiim.space · Aus AI meeskonnatoe jaoks
       </p>
     </div>
   )

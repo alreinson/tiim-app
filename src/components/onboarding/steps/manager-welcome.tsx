@@ -26,7 +26,7 @@ export function ManagerWelcome({ onNext }: ManagerWelcomeProps) {
           className="max-w-md text-sm leading-relaxed"
           style={{ color: 'var(--pz-fg-3)' }}
         >
-          Tiim.app annab sulle nädala alguses automaatse kokkuvõtte oma
+          tiim.space annab sulle nädala alguses automaatse kokkuvõtte oma
           meeskonnast — ilma pikki koosolekuid pidamata.
         </p>
       </div>

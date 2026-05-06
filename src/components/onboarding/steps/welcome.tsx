@@ -22,13 +22,13 @@ export function Welcome({ onNext }: WelcomeProps) {
           className="text-2xl font-semibold tracking-tight"
           style={{ color: 'var(--pz-fg-1)' }}
         >
-          Tere tulemast Tiim.app&#39;i!
+          Tere tulemast tiim.space&#39;i!
         </h1>
         <p
           className="max-w-md text-sm leading-relaxed"
           style={{ color: 'var(--pz-fg-3)' }}
         >
-          Tiim.app aitab sul ja sinu meeskonnal hoida ühist rütmi — iganädalaste
+          tiim.space aitab sul ja sinu meeskonnal hoida ühist rütmi — iganädalaste
           sisseregistreerimiste, eesmärkide ja AI-tugise tagasiside kaudu.
         </p>
       </div>
