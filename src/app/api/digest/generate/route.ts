@@ -5,9 +5,6 @@ import { getUserByClerkId } from '@/lib/db/users'
 import { getCheckinsByCompany } from '@/lib/db/checkins'
 import { createServiceClient } from '@/lib/supabase/server'
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-const resend = new Resend(process.env.RESEND_API_KEY)
-
 function getCurrentWeek(): string {
   const now = new Date()
   const jan1 = new Date(now.getFullYear(), 0, 1)
@@ -16,6 +13,9 @@ function getCurrentWeek(): string {
 }
 
 export async function POST(request: Request): Promise<Response> {
+  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  const resend = new Resend(process.env.RESEND_API_KEY)
+
   const { userId } = await auth()
   if (!userId) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 

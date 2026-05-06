@@ -1,9 +1,8 @@
 import { auth } from '@clerk/nextjs/server'
 import OpenAI from 'openai'
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-
 export async function POST(request: Request): Promise<Response> {
+  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
   const { userId } = await auth()
   if (!userId) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
