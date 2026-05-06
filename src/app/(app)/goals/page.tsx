@@ -1,35 +1,55 @@
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { getUser } from '@/lib/auth/session'
 import { getGoalsByCompany } from '@/lib/db/goals'
 import { getLatestCheckinByUser } from '@/lib/db/checkins'
 import { getUsersByCompany } from '@/lib/db/users'
 import { GoalProgressBar } from '@/components/goals/goal-progress-bar'
-import { StatusBadge } from '@/components/goals/status-badge'
 import { AddGoalButton } from '@/components/goals/add-goal-button'
 import { PendingProposals } from '@/components/goals/pending-proposals'
-import type { Goal, GoalLevel, GoalType } from '@/types'
+import { Plus } from 'lucide-react'
+import type { Goal, GoalLevel, GoalType, GoalStatus } from '@/types'
 
-const LEVEL_BADGE: Record<GoalLevel, { label: string; color: string; bg: string }> = {
-  yearly:    { label: 'Aastane',     color: '#7C3AED', bg: '#7C3AED18' },
-  quarterly: { label: 'Kvartaalne', color: '#2563EB', bg: '#2563EB18' },
+// ─── Status config ────────────────────────────────────────────────────────────
+
+const STATUS_CFG: Record<GoalStatus, { label: string; bg: string; color: string }> = {
+  on_track:    { label: 'On track',    bg: '#e6f7ec', color: '#00a63e' },
+  in_progress: { label: 'In progress', bg: '#eef4ff', color: '#1f4fd8' },
+  at_risk:     { label: 'At risk',     bg: '#fef3e2', color: '#f59e0b' },
+  done:        { label: 'Done',        bg: '#e6f7ec', color: '#00a63e' },
+  not_started: { label: 'To-do',       bg: '#f2f4f7', color: '#667085' },
 }
 
-const TYPE_BADGE: Record<GoalType, { label: string; color: string; bg: string }> = {
-  work:        { label: 'Töö',   color: '#2563EB', bg: '#2563EB18' },
-  development: { label: 'Areng', color: '#7C3AED', bg: '#7C3AED18' },
+const LEVEL_LABEL: Record<GoalLevel, string> = {
+  yearly:    'yearly',
+  quarterly: 'quarterly',
 }
 
-function InlineBadge({ cfg }: { cfg: { label: string; color: string; bg: string } }) {
+const TYPE_CFG: Record<GoalType, { label: string; color: string }> = {
+  work:        { label: 'Work',            color: '#6030ff' },
+  development: { label: 'Professional dev', color: '#f59e0b' },
+}
+
+const TYPE_DOT: Record<GoalType, string> = {
+  work:        '#6030ff',
+  development: '#f59e0b',
+}
+
+// ─── Status pill ──────────────────────────────────────────────────────────────
+
+function StatusPill({ status, size = 'md' }: { status: GoalStatus; size?: 'sm' | 'md' }) {
+  const cfg = STATUS_CFG[status]
   return (
     <span
       style={{
-        fontSize: '11px',
-        fontWeight: 500,
-        padding: '2px 8px',
-        borderRadius: 'var(--pz-radius-pill)',
+        display: 'inline-flex',
+        alignItems: 'center',
+        padding: size === 'sm' ? '2px 8px' : '4px 10px',
+        borderRadius: '9999px',
         background: cfg.bg,
         color: cfg.color,
-        border: `1px solid ${cfg.color}40`,
+        fontSize: size === 'sm' ? '10px' : '11px',
+        fontWeight: 500,
         whiteSpace: 'nowrap',
       }}
     >
@@ -38,74 +58,193 @@ function InlineBadge({ cfg }: { cfg: { label: string; color: string; bg: string 
   )
 }
 
-function GoalCard({ goal, indent = false, userMap }: { goal: Goal; indent?: boolean; userMap: Record<string, string> }) {
-  const levelCfg = LEVEL_BADGE[goal.level]
-  const typeCfg = TYPE_BADGE[goal.type]
-  const ownerLabel = goal.owner_id ? (userMap[goal.owner_id] ?? goal.owner_id.slice(0, 8)) : 'Määramata'
+// ─── Goal card ────────────────────────────────────────────────────────────────
+
+function GoalCard({
+  goal,
+  parentTitle,
+  children,
+  userMap,
+}: {
+  goal: Goal
+  parentTitle?: string
+  children?: Goal[]
+  userMap: Record<string, string>
+}) {
+  const typeCfg = TYPE_CFG[goal.type]
+  const ownerName = goal.owner_id ? (userMap[goal.owner_id] ?? null) : null
 
   return (
     <div
       style={{
-        background: 'var(--pz-surface)',
+        background: '#fff',
         border: '1px solid var(--pz-border)',
-        borderRadius: 'var(--pz-radius-md)',
-        boxShadow: indent ? 'none' : 'var(--pz-shadow-sm)',
-        padding: indent ? '14px 18px' : '20px 24px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '12px',
-        marginLeft: indent ? '24px' : 0,
-        borderLeft: indent ? '2px solid var(--pz-border)' : '1px solid var(--pz-border)',
+        borderRadius: '10px',
+        boxShadow: '0 1px 2px rgba(16,24,40,0.05)',
+        overflow: 'hidden',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px' }}>
-        <p
-          style={{
-            margin: 0,
-            fontWeight: indent ? 500 : 700,
-            color: 'var(--pz-fg-1)',
-            fontSize: indent ? '14px' : '16px',
-            flex: 1,
-          }}
-        >
-          {goal.title}
-        </p>
-        <StatusBadge status={goal.status} />
-      </div>
+      {/* Goal row */}
+      <div style={{ padding: '18px 20px' }}>
+        <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
+          {/* Type dot */}
+          <div
+            style={{
+              width: '4px',
+              height: '4px',
+              borderRadius: '50%',
+              background: TYPE_DOT[goal.type],
+              marginTop: '10px',
+              flexShrink: 0,
+            }}
+          />
 
-      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
-        <InlineBadge cfg={levelCfg} />
-        <InlineBadge cfg={typeCfg} />
-        <span
-          style={{
-            fontSize: '11px',
-            color: 'var(--pz-fg-3)',
-            marginLeft: 'auto',
-          }}
-        >
-          Omanik: {ownerLabel}
-        </span>
-      </div>
+          {/* Content */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {/* Badges row */}
+            <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap' }}>
+              <span
+                style={{
+                  padding: '1px 8px',
+                  borderRadius: '9999px',
+                  background: '#f4f3ff',
+                  color: '#6030ff',
+                  fontSize: '11px',
+                  textTransform: 'capitalize',
+                }}
+              >
+                {LEVEL_LABEL[goal.level]}
+              </span>
+              <span
+                style={{
+                  padding: '1px 8px',
+                  borderRadius: '9999px',
+                  background: '#f4f3ff',
+                  color: typeCfg.color,
+                  fontSize: '11px',
+                }}
+              >
+                {typeCfg.label}
+              </span>
+              {parentTitle && (
+                <span style={{ fontSize: '11px', color: '#667085' }}>
+                  ↗ {parentTitle}
+                </span>
+              )}
+              {ownerName && (
+                <span style={{ fontSize: '11px', color: '#667085', marginLeft: 'auto' }}>
+                  {ownerName}
+                </span>
+              )}
+            </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <div style={{ flex: 1 }}>
-          <GoalProgressBar progress={goal.progress} height={indent ? 5 : 7} />
+            {/* Title */}
+            <p
+              style={{
+                margin: '0 0 10px',
+                fontFamily: 'var(--font-poppins, Poppins), sans-serif',
+                fontWeight: 600,
+                fontSize: '16px',
+                color: 'var(--pz-fg-1)',
+                lineHeight: 1.4,
+                letterSpacing: '-0.16px',
+              }}
+            >
+              {goal.title}
+            </p>
+
+            {/* Progress row */}
+            <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
+              <div style={{ flex: 1 }}>
+                <GoalProgressBar progress={goal.progress} height={7} />
+              </div>
+              <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--pz-fg-1)', whiteSpace: 'nowrap' }}>
+                {goal.progress}%
+              </span>
+              <StatusPill status={goal.status} />
+            </div>
+          </div>
         </div>
-        <span
+      </div>
+
+      {/* Children / sub-goals */}
+      {children && children.length > 0 && (
+        <div
           style={{
-            fontSize: '12px',
-            color: 'var(--pz-fg-3)',
-            whiteSpace: 'nowrap',
-            minWidth: '36px',
-            textAlign: 'right',
+            background: 'rgba(249,250,251,0.5)',
+            borderTop: '1px solid var(--pz-border)',
+            padding: '10px 20px 14px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '4px',
           }}
         >
-          {goal.progress}%
-        </span>
-      </div>
+          {children.map((child) => (
+            <div
+              key={child.id}
+              style={{
+                background: '#fff',
+                border: '1px solid var(--pz-border)',
+                borderRadius: '10px',
+                padding: '10px 14px',
+                display: 'flex',
+                gap: '12px',
+                alignItems: 'center',
+              }}
+            >
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', gap: '6px', marginBottom: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+                  <span style={{ fontSize: '10px', color: '#667085' }}>quarterly</span>
+                  {child.owner_id && userMap[child.owner_id] && (
+                    <span style={{ fontSize: '10px', color: '#667085', marginLeft: 'auto' }}>
+                      {userMap[child.owner_id]}
+                    </span>
+                  )}
+                </div>
+                <p style={{ margin: '0 0 8px', fontSize: '13px', fontWeight: 500, color: 'var(--pz-fg-1)' }}>
+                  {child.title}
+                </p>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  <div style={{ flex: 1 }}>
+                    <GoalProgressBar progress={child.progress} height={4} />
+                  </div>
+                  <span style={{ fontSize: '10px', color: '#667085' }}>{child.progress}%</span>
+                  <StatusPill status={child.status} size="sm" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
+
+// ─── Filter pill ──────────────────────────────────────────────────────────────
+
+function FilterPill({ label, active }: { label: string; active?: boolean }) {
+  return (
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        padding: '5px 14px',
+        borderRadius: '9999px',
+        fontSize: '11px',
+        fontWeight: 500,
+        background: active ? '#f4f3ff' : '#fff',
+        color: active ? '#6030ff' : '#4a5565',
+        border: active ? '1px solid #6030ff' : '1px solid var(--pz-border)',
+        cursor: 'default',
+        textTransform: 'capitalize',
+      }}
+    >
+      {label}
+    </span>
+  )
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function GoalsPage() {
   const user = await getUser()
@@ -126,129 +265,107 @@ export default async function GoalsPage() {
 
   const yearlyGoals = allGoals.filter((g) => g.level === 'yearly')
   const quarterlyGoals = allGoals.filter((g) => g.level === 'quarterly')
-  const orphanQuarterly = quarterlyGoals.filter((g) => !g.parent_id)
 
   function childrenOf(parentId: string): Goal[] {
     return quarterlyGoals.filter((g) => g.parent_id === parentId)
   }
 
+  const orphanQuarterly = quarterlyGoals.filter((g) => !g.parent_id)
   const isEmpty = allGoals.length === 0
 
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--pz-s-8)' }}>
-      {/* Page header */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 'var(--pz-s-4)',
-          flexWrap: 'wrap',
-        }}
-      >
-        <div>
-          <h1
-            style={{
-              fontSize: '28px',
-              fontWeight: 700,
-              color: 'var(--pz-fg-1)',
-              margin: 0,
-              lineHeight: 1.2,
-            }}
-          >
-            Eesmärgid
-          </h1>
-          <p style={{ margin: '4px 0 0', fontSize: '14px', color: 'var(--pz-fg-3)' }}>
-            Kõik ettevõtte eesmärgid hierarhias
-          </p>
-        </div>
-        <AddGoalButton />
-      </div>
+  const onTrack = allGoals.filter((g) => g.status === 'on_track' || g.status === 'done').length
+  const atRisk  = allGoals.filter((g) => g.status === 'at_risk').length
 
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {/* AI pending proposals */}
       {proposals.length > 0 && latestCheckin && (
         <PendingProposals checkinId={latestCheckin.id} proposals={proposals} />
       )}
 
-      {/* Filter row — visual only */}
-      <div
-        style={{
-          display: 'flex',
-          gap: 'var(--pz-s-2)',
-          flexWrap: 'wrap',
-        }}
-      >
-        {(['Kõik', 'Aastane', 'Kvartaalne', 'Töö', 'Areng'] as const).map((label) => (
-          <span
-            key={label}
-            style={{
-              padding: '5px 14px',
-              borderRadius: 'var(--pz-radius-pill)',
-              fontSize: '13px',
-              fontWeight: 500,
-              background: label === 'Kõik' ? 'var(--pz-grad-primary)' : 'var(--pz-surface)',
-              color: label === 'Kõik' ? '#fff' : 'var(--pz-fg-2)',
-              border: '1px solid var(--pz-border)',
-              cursor: 'default',
-            }}
-          >
-            {label}
-          </span>
-        ))}
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+        <div>
+          <h1 style={{ margin: '0 0 4px', fontSize: '28px', fontWeight: 700, color: 'var(--pz-fg-1)', lineHeight: 1.2, letterSpacing: '-0.28px' }}>
+            Eesmärgid
+          </h1>
+          <p style={{ margin: 0, fontSize: '13px', color: '#4a5565' }}>
+            Eesmärgid → projektid → ülesanded. Klõpsa staatuse muutmiseks.
+          </p>
+        </div>
+        <AddGoalButton />
+      </div>
+
+      {/* Summary chips */}
+      {!isEmpty && (
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <div className="pz-card" style={{ padding: '10px 16px', display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <span style={{ fontSize: '11px', color: '#667085', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Kokku</span>
+            <span style={{ fontSize: '20px', fontWeight: 700, color: 'var(--pz-fg-1)' }}>{allGoals.length}</span>
+          </div>
+          <div className="pz-card" style={{ padding: '10px 16px', display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <span style={{ fontSize: '11px', color: '#00a63e', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Graafikus</span>
+            <span style={{ fontSize: '20px', fontWeight: 700, color: 'var(--pz-fg-1)' }}>{onTrack}</span>
+          </div>
+          {atRisk > 0 && (
+            <div className="pz-card" style={{ padding: '10px 16px', display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <span style={{ fontSize: '11px', color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Ohus</span>
+              <span style={{ fontSize: '20px', fontWeight: 700, color: 'var(--pz-fg-1)' }}>{atRisk}</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Filter row */}
+      <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+        <FilterPill label="kõik" active />
+        <FilterPill label="minu" />
+        <FilterPill label="aastane" />
+        <FilterPill label="kvartaalne" />
+        <FilterPill label="ohus" />
       </div>
 
       {/* Empty state */}
       {isEmpty && (
         <div
           style={{
-            background: 'var(--pz-surface)',
+            background: '#fff',
             border: '1px solid var(--pz-border)',
-            borderRadius: 'var(--pz-radius-md)',
-            boxShadow: 'var(--pz-shadow-sm)',
-            padding: '48px 24px',
+            borderRadius: '10px',
+            padding: '56px 24px',
             textAlign: 'center',
-            color: 'var(--pz-fg-3)',
-            fontSize: '15px',
           }}
         >
-          Eesmärke ei ole veel lisatud.
+          <p style={{ margin: '0 0 6px', fontSize: '15px', fontWeight: 500, color: 'var(--pz-fg-1)' }}>Eesmärke pole veel lisatud</p>
+          <p style={{ margin: 0, fontSize: '13px', color: '#667085' }}>Loo esimene eesmärk, et tiim näeks suunda.</p>
         </div>
       )}
 
-      {/* Goals tree */}
+      {/* Goals list */}
       {!isEmpty && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--pz-s-6)' }}>
-          {yearlyGoals.map((yearly) => {
-            const children = childrenOf(yearly.id)
-            return (
-              <div key={yearly.id} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--pz-s-3)' }}>
-                <GoalCard goal={yearly} userMap={userMap} />
-                {children.map((child) => (
-                  <GoalCard key={child.id} goal={child} indent userMap={userMap} />
-                ))}
-              </div>
-            )
-          })}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {/* Yearly goals with their quarterly children */}
+          {yearlyGoals.map((yearly) => (
+            <GoalCard
+              key={yearly.id}
+              goal={yearly}
+              children={childrenOf(yearly.id)}
+              userMap={userMap}
+            />
+          ))}
 
-          {/* Quarterly goals with no parent */}
+          {/* Orphan quarterly goals */}
           {orphanQuarterly.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--pz-s-3)' }}>
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  color: 'var(--pz-fg-3)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.06em',
-                }}
-              >
-                Seostamata kvartalieesmärgid
-              </p>
+            <>
+              {yearlyGoals.length > 0 && (
+                <p style={{ margin: '8px 0 4px', fontSize: '11px', fontWeight: 600, color: '#667085', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  Seostamata kvartalieesmärgid
+                </p>
+              )}
               {orphanQuarterly.map((goal) => (
                 <GoalCard key={goal.id} goal={goal} userMap={userMap} />
               ))}
-            </div>
+            </>
           )}
         </div>
       )}
