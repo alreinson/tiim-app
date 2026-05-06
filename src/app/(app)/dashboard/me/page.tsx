@@ -134,7 +134,7 @@ export default async function MeDashboardPage() {
             Nädalane sisselogimine ootab
           </p>
           <Link
-            href="/checkins/new"
+            href="/chat"
             style={{
               display: 'inline-block',
               padding: '8px 20px',
