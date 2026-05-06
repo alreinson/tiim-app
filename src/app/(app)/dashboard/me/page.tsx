@@ -1,7 +1,6 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { auth } from '@clerk/nextjs/server'
-import { getUserByClerkId } from '@/lib/db/users'
+import { getUser } from '@/lib/auth/session'
 import { getGoalsByOwner } from '@/lib/db/goals'
 import { getCheckinsByUser } from '@/lib/db/checkins'
 import { getBlockersByUser } from '@/lib/db/blockers'
@@ -44,9 +43,7 @@ const SUPPORT_TYPE_LABELS: Record<string, string> = {
 }
 
 export default async function MeDashboardPage() {
-  const { userId } = await auth()
-  if (!userId) redirect('/sign-in')
-  const user = await getUserByClerkId(userId)
+  const user = await getUser()
   if (!user) redirect('/sign-in')
 
   const currentWeek = getCurrentWeek()

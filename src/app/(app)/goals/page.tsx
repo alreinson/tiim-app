@@ -1,6 +1,5 @@
 import { redirect } from 'next/navigation'
-import { auth } from '@clerk/nextjs/server'
-import { getUserByClerkId } from '@/lib/db/users'
+import { getUser } from '@/lib/auth/session'
 import { getGoalsByCompany } from '@/lib/db/goals'
 import { GoalProgressBar } from '@/components/goals/goal-progress-bar'
 import { StatusBadge } from '@/components/goals/status-badge'
@@ -106,9 +105,7 @@ function GoalCard({ goal, indent = false }: { goal: Goal; indent?: boolean }) {
 }
 
 export default async function GoalsPage() {
-  const { userId } = await auth()
-  if (!userId) redirect('/sign-in')
-  const user = await getUserByClerkId(userId)
+  const user = await getUser()
   if (!user) redirect('/sign-in')
 
   const allGoals = await getGoalsByCompany(user.company_id)

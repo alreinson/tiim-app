@@ -1,23 +1,14 @@
 import { redirect } from 'next/navigation'
-import { auth } from '@clerk/nextjs/server'
-import { getUserByClerkId } from '@/lib/db/users'
+import { getUser } from '@/lib/auth/session'
 import { LanguageProvider } from '@/context/language-context'
 import { TopNav } from '@/components/shared/top-nav'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  // ── Auth guard ─────────────────────────────────────────────────────────────
-  const { userId } = await auth()
-
-  if (!userId) {
-    // Should be caught by middleware, but be defensive
-    redirect('/sign-in')
-  }
-
-  // ── Load Supabase user ─────────────────────────────────────────────────────
   let dbUser = null
   try {
-    dbUser = await getUserByClerkId(userId)
-  } catch {
+    dbUser = await getUser()
+  } catch (e) {
+    if ((e as { digest?: string }).digest?.startsWith('NEXT_REDIRECT')) throw e
     // DB unreachable — render a friendly error rather than crashing
     return (
       <div

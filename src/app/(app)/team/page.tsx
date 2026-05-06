@@ -1,6 +1,6 @@
-import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
-import { getUserByClerkId, getUsersByCompany } from '@/lib/db/users'
+import { getUser } from '@/lib/auth/session'
+import { getUsersByCompany } from '@/lib/db/users'
 import { getPendingInvitesByInviter, getPendingInviteByInvitee } from '@/lib/db/invites'
 import { TeamInvitePanel } from '@/components/team/team-invite-panel'
 import { PendingConnections } from '@/components/team/pending-connections'
@@ -25,9 +25,7 @@ function getRoleColor(role: User['role']): string {
 }
 
 export default async function TeamDirectoryPage() {
-  const { userId } = await auth()
-  if (!userId) redirect('/sign-in')
-  const user = await getUserByClerkId(userId)
+  const user = await getUser()
   if (!user) redirect('/sign-in')
 
   const [teamMembers, pendingAsInviter, pendingAsInvitee] = await Promise.all([
