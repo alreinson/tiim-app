@@ -16,18 +16,18 @@ interface NavLink {
 
 const NAV_LINKS_BY_ROLE: Record<UserRole, NavLink[]> = {
   team_member: [
-    { href: '/dashboard', label: 'Töölaud' },
+    { href: '/dashboard/me', label: 'Töölaud' },
     { href: '/goals', label: 'Eesmärgid' },
     { href: '/chat', label: 'Vestlus' },
   ],
   manager: [
-    { href: '/dashboard', label: 'Töölaud' },
+    { href: '/dashboard/team', label: 'Töölaud' },
     { href: '/team', label: 'Tiim' },
     { href: '/goals', label: 'Eesmärgid' },
     { href: '/chat', label: 'Vestlus' },
   ],
   admin: [
-    { href: '/dashboard', label: 'Töölaud' },
+    { href: '/dashboard/team', label: 'Töölaud' },
     { href: '/team', label: 'Tiim' },
     { href: '/goals', label: 'Eesmärgid' },
     { href: '/chat', label: 'Vestlus' },
@@ -50,10 +50,7 @@ export function TopNav({ user }: TopNavProps) {
    * /dashboard is only active when pathname === '/dashboard' (exact match)
    * to avoid it matching everything.
    */
-  const isActive = (href: string) => {
-    if (href === '/dashboard') return pathname === '/dashboard'
-    return pathname.startsWith(href)
-  }
+  const isActive = (href: string) => pathname.startsWith(href)
 
   return (
     <header
