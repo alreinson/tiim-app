@@ -3,10 +3,12 @@ import Link from 'next/link'
 import { getUser } from '@/lib/auth/session'
 import { getUsersByCompany } from '@/lib/db/users'
 import { getGoalsByCompany } from '@/lib/db/goals'
-import { getCheckinsByCompany } from '@/lib/db/checkins'
+import { getCheckinsByCompany, getCheckinsByUser } from '@/lib/db/checkins'
 import { getActiveBlockersByCompany } from '@/lib/db/blockers'
 import { getShoutoutsByCompany } from '@/lib/db/shoutouts'
+import { getNewsByCompany } from '@/lib/db/news'
 import { TeamMemberCard } from '@/components/dashboard/team-member-card'
+import { AnnouncementsFeed } from '@/components/shared/announcements-feed'
 import type { SupportType } from '@/types'
 
 function getCurrentWeek(): string {
@@ -41,13 +43,17 @@ export default async function TeamDashboardPage() {
 
   const currentWeek = getCurrentWeek()
 
-  const [teamMembers, weekCheckins, activeBlockers, recentShoutouts, goals] = await Promise.all([
+  const [teamMembers, weekCheckins, activeBlockers, recentShoutouts, goals, myCheckins, newsItems] = await Promise.all([
     getUsersByCompany(user.company_id),
     getCheckinsByCompany(user.company_id, currentWeek),
     getActiveBlockersByCompany(user.company_id),
     getShoutoutsByCompany(user.company_id, 5),
     getGoalsByCompany(user.company_id),
+    getCheckinsByUser(user.id, 1),
+    getNewsByCompany(user.company_id),
   ])
+
+  const myThisWeekCheckin = myCheckins[0]?.week === currentWeek ? myCheckins[0] : null
 
   const checkedInUserIds = new Set(weekCheckins.map((c) => c.user_id))
   const memberCount = teamMembers.filter((m) => m.id !== user.id).length
@@ -307,6 +313,92 @@ export default async function TeamDashboardPage() {
           </div>
         )}
       </section>
+
+      {/* Manager's own PPP this week */}
+      {myThisWeekCheckin && (myThisWeekCheckin.progress.length > 0 || myThisWeekCheckin.plans.length > 0 || myThisWeekCheckin.problems.length > 0) && (
+        <section>
+          <h2 style={{ margin: '0 0 var(--pz-s-4)', fontSize: '18px', fontWeight: 600, color: 'var(--pz-fg-1)' }}>
+            Minu PPP selle nädal
+          </h2>
+          <div style={{ display: 'flex', gap: 'var(--pz-s-4)', flexWrap: 'wrap' }}>
+            {[
+              { label: 'Progress', items: myThisWeekCheckin.progress, color: '#00B894' },
+              { label: 'Plaanid', items: myThisWeekCheckin.plans, color: 'var(--pz-violet)' },
+              { label: 'Probleemid', items: myThisWeekCheckin.problems, color: 'var(--pz-danger)' },
+            ].map(({ label, items, color }) => items.length > 0 && (
+              <div
+                key={label}
+                style={{
+                  flex: '1 1 200px', background: 'var(--pz-surface)',
+                  border: '1px solid var(--pz-border)', borderRadius: 'var(--pz-radius-md)',
+                  boxShadow: 'var(--pz-shadow-sm)', padding: '16px',
+                }}
+              >
+                <p style={{ margin: '0 0 10px', fontSize: '12px', fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</p>
+                <ul style={{ margin: 0, paddingLeft: '16px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {items.map((item, i) => (
+                    <li key={i} style={{ fontSize: '13px', color: 'var(--pz-fg-1)', lineHeight: 1.4 }}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+          {!myThisWeekCheckin && (
+            <Link
+              href="/chat"
+              style={{ display: 'inline-block', marginTop: '8px', fontSize: '14px', color: 'var(--pz-violet)', fontWeight: 500, textDecoration: 'none' }}
+            >
+              Lisa oma PPP →
+            </Link>
+          )}
+        </section>
+      )}
+
+      {/* Team members' shared PPP */}
+      {weekCheckins.some((c) => c.user_id !== user.id && (c.progress.length > 0 || c.plans.length > 0 || c.problems.length > 0)) && (
+        <section>
+          <h2 style={{ margin: '0 0 var(--pz-s-4)', fontSize: '18px', fontWeight: 600, color: 'var(--pz-fg-1)' }}>
+            Tiimi PPP selle nädal
+          </h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {weekCheckins
+              .filter((c) => c.user_id !== user.id)
+              .map((checkin) => {
+                const member = teamMembers.find((m) => m.id === checkin.user_id)
+                if (!member) return null
+                const sharing = checkin.sharing ?? {}
+                const sharedProgress = (sharing.progress ?? checkin.progress.map((_: string, i: number) => i)).map((i: number) => checkin.progress[i]).filter(Boolean)
+                const sharedPlans = (sharing.plans ?? checkin.plans.map((_: string, i: number) => i)).map((i: number) => checkin.plans[i]).filter(Boolean)
+                const sharedProblems = (sharing.problems ?? checkin.problems.map((_: string, i: number) => i)).map((i: number) => checkin.problems[i]).filter(Boolean)
+                if (!sharedProgress.length && !sharedPlans.length && !sharedProblems.length) return null
+                return (
+                  <div key={checkin.id} style={{ background: 'var(--pz-surface)', border: '1px solid var(--pz-border)', borderRadius: 'var(--pz-radius-md)', padding: '16px', boxShadow: 'var(--pz-shadow-sm)' }}>
+                    <p style={{ margin: '0 0 12px', fontWeight: 600, fontSize: '14px', color: 'var(--pz-fg-1)' }}>{member.name}</p>
+                    <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                      {[
+                        { label: 'Progress', items: sharedProgress, color: '#00B894' },
+                        { label: 'Plaanid', items: sharedPlans, color: 'var(--pz-violet)' },
+                        { label: 'Probleemid', items: sharedProblems, color: 'var(--pz-danger)' },
+                      ].map(({ label, items, color }) => items.length > 0 && (
+                        <div key={label} style={{ flex: '1 1 140px' }}>
+                          <p style={{ margin: '0 0 6px', fontSize: '11px', fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</p>
+                          <ul style={{ margin: 0, paddingLeft: '14px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            {items.map((item: string, i: number) => (
+                              <li key={i} style={{ fontSize: '12px', color: 'var(--pz-fg-2)', lineHeight: 1.4 }}>{item}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+          </div>
+        </section>
+      )}
+
+      {/* Announcements */}
+      <AnnouncementsFeed initialItems={newsItems} canPin={true} />
     </div>
   )
 }

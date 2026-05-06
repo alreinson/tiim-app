@@ -6,10 +6,12 @@ import { getCheckinsByUser } from '@/lib/db/checkins'
 import { getBlockersByUser } from '@/lib/db/blockers'
 import { getShoutoutsForUser } from '@/lib/db/shoutouts'
 import { getUnannouncedAchievements } from '@/lib/db/achievements'
+import { getNewsByCompany } from '@/lib/db/news'
 import { StatCard } from '@/components/dashboard/stat-card'
 import { GoalProgressBar } from '@/components/goals/goal-progress-bar'
 import { StatusBadge } from '@/components/goals/status-badge'
 import { AchievementBanner } from '@/components/dashboard/achievement-banner'
+import { AnnouncementsFeed } from '@/components/shared/announcements-feed'
 import type { GoalLevel, GoalType } from '@/types'
 
 function getCurrentWeek(): string {
@@ -48,12 +50,13 @@ export default async function MeDashboardPage() {
 
   const currentWeek = getCurrentWeek()
 
-  const [goals, checkins, blockers, shoutouts, unannouncedAchievements] = await Promise.all([
+  const [goals, checkins, blockers, shoutouts, unannouncedAchievements, newsItems] = await Promise.all([
     getGoalsByOwner(user.id),
     getCheckinsByUser(user.id, 5),
     getBlockersByUser(user.id),
     getShoutoutsForUser(user.id, 3),
     getUnannouncedAchievements(user.id),
+    getNewsByCompany(user.company_id),
   ])
 
   const thisWeekCheckin = checkins.find((c) => c.week === currentWeek) ?? null
@@ -360,6 +363,41 @@ export default async function MeDashboardPage() {
           </div>
         )}
       </section>
+
+      {/* My PPP from latest check-in */}
+      {thisWeekCheckin && (thisWeekCheckin.progress.length > 0 || thisWeekCheckin.plans.length > 0 || thisWeekCheckin.problems.length > 0) && (
+        <section>
+          <h2 style={{ margin: '0 0 var(--pz-s-4)', fontSize: '18px', fontWeight: 600, color: 'var(--pz-fg-1)' }}>
+            Selle nädala PPP
+          </h2>
+          <div style={{ display: 'flex', gap: 'var(--pz-s-4)', flexWrap: 'wrap' }}>
+            {[
+              { label: 'Progress', items: thisWeekCheckin.progress, color: '#00B894' },
+              { label: 'Plaanid', items: thisWeekCheckin.plans, color: 'var(--pz-violet)' },
+              { label: 'Probleemid', items: thisWeekCheckin.problems, color: 'var(--pz-danger)' },
+            ].map(({ label, items, color }) => items.length > 0 && (
+              <div
+                key={label}
+                style={{
+                  flex: '1 1 200px', background: 'var(--pz-surface)',
+                  border: '1px solid var(--pz-border)', borderRadius: 'var(--pz-radius-md)',
+                  boxShadow: 'var(--pz-shadow-sm)', padding: '16px',
+                }}
+              >
+                <p style={{ margin: '0 0 10px', fontSize: '12px', fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</p>
+                <ul style={{ margin: 0, paddingLeft: '16px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {items.map((item, i) => (
+                    <li key={i} style={{ fontSize: '13px', color: 'var(--pz-fg-1)', lineHeight: 1.4 }}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Announcements */}
+      <AnnouncementsFeed initialItems={newsItems} canPin={false} />
     </div>
   )
 }

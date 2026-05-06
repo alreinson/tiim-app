@@ -66,12 +66,22 @@ export interface WorkItem {
   updated_at: string
 }
 
+export interface CheckinSharing {
+  progress: number[]
+  plans: number[]
+  problems: number[]
+}
+
 export interface Checkin {
   id: string
   user_id: string
   type: CheckinType
   week: string            // ISO week string e.g. "2026-W19"
   transcript: string
+  progress: string[]
+  plans: string[]
+  problems: string[]
+  sharing: CheckinSharing
   mood?: number           // 1–5
   energy?: number         // 1–5
   workload?: number       // 1–5

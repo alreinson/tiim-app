@@ -1,5 +1,5 @@
 import { createServiceClient } from '@/lib/supabase/server'
-import type { Checkin } from '@/types'
+import type { Checkin, CheckinSharing } from '@/types'
 
 export async function getCheckinsByUser(userId: string, limit = 10): Promise<Checkin[]> {
   const supabase = await createServiceClient()
@@ -81,6 +81,18 @@ export async function createCheckin(
   }
 
   return created as Checkin
+}
+
+export async function updateCheckinSharing(id: string, sharing: CheckinSharing): Promise<Checkin> {
+  const supabase = await createServiceClient()
+  const { data, error } = await supabase
+    .from('checkins')
+    .update({ sharing })
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw new Error(`Failed to update checkin sharing: ${error.message}`)
+  return data as Checkin
 }
 
 export async function updateCheckin(id: string, data: Partial<Checkin>): Promise<Checkin> {

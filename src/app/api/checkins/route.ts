@@ -19,7 +19,7 @@ export async function POST(request: Request): Promise<Response> {
   if (!user) return Response.json({ error: 'User not found' }, { status: 404 })
 
   try {
-    const { transcript, mood, energy, workload, pending_ai_actions } = await request.json()
+    const { transcript, mood, energy, workload, progress, plans, problems, sharing, pending_ai_actions } = await request.json()
 
     const week = getCurrentWeek()
 
@@ -28,6 +28,10 @@ export async function POST(request: Request): Promise<Response> {
       type: 'weekly',
       week,
       transcript: transcript ?? '',
+      progress: progress ?? [],
+      plans: plans ?? [],
+      problems: problems ?? [],
+      sharing: sharing ?? {},
       mood: mood ?? null,
       energy: energy ?? null,
       workload: workload ?? null,
