@@ -1,7 +1,6 @@
 import { redirect } from 'next/navigation'
 import { getUser } from '@/lib/auth/session'
 import { getCheckinsByUser } from '@/lib/db/checkins'
-import { getGoalsByOwner } from '@/lib/db/goals'
 import { ChatClient } from './chat-client'
 
 function getCurrentWeek(): string {
@@ -33,20 +32,12 @@ export default async function ChatPage() {
   if (!user) redirect('/sign-in')
 
   const currentWeek = getCurrentWeek()
-
-  const [checkins, goals] = await Promise.all([
-    getCheckinsByUser(user.id, 5),
-    getGoalsByOwner(user.id),
-  ])
-
+  const checkins = await getCheckinsByUser(user.id, 5)
   const hasCheckedInThisWeek = checkins[0]?.week === currentWeek
-  const lastCheckin = hasCheckedInThisWeek ? checkins[1] : checkins[0]
-  const lastCheckinPlans = lastCheckin?.plans ?? []
 
-  const activeGoals = goals
-    .filter((g) => g.status !== 'done')
-    .slice(0, 4)
-    .map((g) => ({ id: g.id, title: g.title, progress: g.progress, status: g.status }))
+  // Last week's plans to show in context card
+  const lastCheckin = hasCheckedInThisWeek ? checkins[1] : checkins[0]
+  const lastCheckinPlans: string[] = lastCheckin?.plans ?? []
 
   return (
     <ChatClient
@@ -55,7 +46,6 @@ export default async function ChatPage() {
       hasCheckedInThisWeek={hasCheckedInThisWeek}
       weekDateRange={getWeekDateRange(currentWeek)}
       lastCheckinPlans={lastCheckinPlans}
-      activeGoals={activeGoals}
     />
   )
 }
