@@ -1,98 +1,88 @@
 import { redirect } from 'next/navigation'
 import { getUser } from '@/lib/auth/session'
 import { getUsersByCompany } from '@/lib/db/users'
-import { getUnannouncedAchievements } from '@/lib/db/achievements'
-import { Trophy, Flame, Star, Zap } from 'lucide-react'
+import { getStreaksByUserIds } from '@/lib/db/streaks'
+import { getAllAchievementsByUser } from '@/lib/db/achievements'
+import { getShoutoutsByCompany } from '@/lib/db/shoutouts'
+import { getResolvedBlockerUserIdsByCompany } from '@/lib/db/blockers'
+import { TeamAchievementsClient } from './team-achievements-client'
 
-const ACHIEVEMENT_META: Record<string, { icon: React.ReactNode; title: string }> = {
-  first_checkin: { icon: <Star className="size-5" />, title: 'Esimene samm' },
-  streak_3:      { icon: <Flame className="size-5" />, title: 'Tuleleek' },
-  streak_7:      { icon: <Zap className="size-5" />, title: 'Teemant' },
-  streak_30:     { icon: <Trophy className="size-5" />, title: 'Purustamatu' },
-}
+const BADGE_DEFS = [
+  { key: 'streak_3',      emoji: '🔥', name: 'Tuleleek',           desc: '3+ nädala järjestikune sisselogimine' },
+  { key: 'streak_7',      emoji: '💎', name: 'Teemant',            desc: '7+ nädala järjestikune sisselogimine' },
+  { key: 'streak_30',     emoji: '🛡️', name: 'Purustamatu',        desc: 'Terve kvartali järjestikune sisselogimine' },
+  { key: 'first_checkin', emoji: '🎯', name: 'Esimene samm',       desc: 'Esimene sisselogimine' },
+  { key: 'level_up',      emoji: '📈', name: 'Arenguhüpe',         desc: 'Arenguseesmärk täidetud' },
+  { key: 'team_player',   emoji: '🤝', name: 'Tiimimängija',       desc: '3+ tänamist saanud' },
+  { key: 'problem_solver',emoji: '🧩', name: 'Probleemilahendaja', desc: 'Takistus lahendatud' },
+  { key: 'glow_up',       emoji: '✨', name: 'Meeleolu tõus',      desc: 'Märkimisväärne meeleolu paranemine' },
+]
 
 export default async function TeamAchievementsPage() {
   const user = await getUser()
   if (!user) redirect('/sign-in')
   if (user.role === 'team_member') redirect('/achievements')
 
-  const teamMembers = await getUsersByCompany(user.company_id)
-  const memberAchievements = await Promise.all(
-    teamMembers.map(async (m) => ({
-      member: m,
-      achievements: await getUnannouncedAchievements(m.id),
-    }))
-  )
+  const members = await getUsersByCompany(user.company_id)
+  const memberIds = members.map((m) => m.id)
+
+  const [streaks, achievementsPerUser, shoutouts, resolvedBlockerUserIds] = await Promise.all([
+    getStreaksByUserIds(memberIds),
+    Promise.all(memberIds.map((id) => getAllAchievementsByUser(id).then((a) => ({ id, codes: a.map((x) => x.code) })))),
+    getShoutoutsByCompany(user.company_id, 1000),
+    getResolvedBlockerUserIdsByCompany(user.company_id),
+  ])
+
+  const achievementMap: Record<string, Set<string>> = {}
+  for (const { id, codes } of achievementsPerUser) {
+    achievementMap[id] = new Set(codes)
+  }
+
+  const shoutoutCounts: Record<string, number> = {}
+  for (const s of shoutouts) {
+    shoutoutCounts[s.to_user_id] = (shoutoutCounts[s.to_user_id] ?? 0) + 1
+  }
+  const teamPlayerIds = new Set(memberIds.filter((id) => (shoutoutCounts[id] ?? 0) >= 3))
+  const problemSolverIds = new Set(resolvedBlockerUserIds)
+
+  const badgeEarners: Record<string, string[]> = {}
+  for (const def of BADGE_DEFS) {
+    if (def.key === 'team_player') {
+      badgeEarners[def.key] = memberIds.filter((id) => teamPlayerIds.has(id))
+    } else if (def.key === 'problem_solver') {
+      badgeEarners[def.key] = memberIds.filter((id) => problemSolverIds.has(id))
+    } else if (def.key === 'level_up' || def.key === 'glow_up') {
+      badgeEarners[def.key] = []
+    } else {
+      badgeEarners[def.key] = memberIds.filter((id) => achievementMap[id]?.has(def.key))
+    }
+  }
+
+  const memberBadgeCounts: Record<string, number> = {}
+  for (const m of members) {
+    memberBadgeCounts[m.id] = BADGE_DEFS.filter((def) => badgeEarners[def.key].includes(m.id)).length
+  }
+
+  const clientMembers = members.map((m) => ({
+    id: m.id,
+    name: m.name,
+    streak: streaks[m.id] ?? 0,
+    badgeCount: memberBadgeCounts[m.id] ?? 0,
+  }))
+
+  const clientBadges = BADGE_DEFS.map((def) => ({
+    key: def.key,
+    emoji: def.emoji,
+    name: def.name,
+    desc: def.desc,
+    earnerIds: badgeEarners[def.key],
+  }))
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      <div>
-        <h1 style={{ margin: 0 }}>Tiimi saavutused</h1>
-        <p style={{ color: 'var(--pz-fg-3)', fontSize: '14px', marginTop: '6px' }}>
-          Kõik teenitud märgid üle tiimi.
-        </p>
-      </div>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        {memberAchievements
-          .filter(({ achievements }) => achievements.length > 0)
-          .map(({ member, achievements }) => (
-            <div key={member.id} className="pz-card" style={{ padding: '20px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-                <div
-                  style={{
-                    width: '36px',
-                    height: '36px',
-                    borderRadius: '50%',
-                    background: 'var(--pz-grad-primary)',
-                    display: 'grid',
-                    placeItems: 'center',
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    color: '#fff',
-                    flexShrink: 0,
-                  }}
-                >
-                  {member.name.split(' ').map((p) => p[0]).slice(0, 2).join('')}
-                </div>
-                <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--pz-fg-1)' }}>
-                  {member.name}
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                {achievements.map((a) => {
-                  const meta = ACHIEVEMENT_META[a.code]
-                  return (
-                    <div
-                      key={a.id}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        padding: '6px 12px',
-                        borderRadius: 'var(--pz-radius-pill)',
-                        background: 'linear-gradient(135deg, #F4F3FF, #FCE7FB)',
-                        border: '1px solid rgba(96,48,255,0.15)',
-                        fontSize: '12px',
-                        fontWeight: 500,
-                        color: 'var(--pz-violet)',
-                      }}
-                    >
-                      <span style={{ color: 'var(--pz-violet)' }}>{meta?.icon}</span>
-                      {meta?.title ?? a.code}
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          ))}
-
-        {memberAchievements.every(({ achievements }) => achievements.length === 0) && (
-          <div className="pz-card" style={{ padding: '48px', textAlign: 'center', color: 'var(--pz-fg-3)', fontSize: '14px' }}>
-            Saavutusi pole veel teenitud.
-          </div>
-        )}
-      </div>
-    </div>
+    <TeamAchievementsClient
+      members={clientMembers}
+      badges={clientBadges}
+      totalBadges={BADGE_DEFS.length}
+    />
   )
 }

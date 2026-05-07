@@ -11,13 +11,13 @@ export default async function NewsPage() {
   const isManager = user.role === 'manager' || user.role === 'admin'
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
       <div>
-        <h1 style={{ margin: 0 }}>{isManager ? 'Uudised ja teadaanded' : 'Tiimi uudised'}</h1>
-        <p style={{ color: 'var(--pz-fg-3)', fontSize: '14px', marginTop: '6px' }}>
-          {isManager
-            ? 'Postita uuendusi, jälgi kinnitusi ja halda pinnitud postitusi.'
-            : 'Uuendused juhilt ja tiimilt.'}
+        <h1 style={{ margin: '0 0 4px', fontSize: '28px', fontWeight: 700, color: '#101828', letterSpacing: '-0.28px', lineHeight: 1.2 }}>
+          Tiimi uudised
+        </h1>
+        <p style={{ margin: 0, fontSize: '13px', color: '#4a5565' }}>
+          Uuendused juhilt ja tiimilt.
         </p>
       </div>
       <AnnouncementsFeed initialItems={newsItems} canPin={isManager} />

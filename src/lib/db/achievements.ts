@@ -36,6 +36,19 @@ export async function checkAndGrantAchievements(
   return granted
 }
 
+export async function getAllAchievementsByUser(
+  userId: string
+): Promise<{ id: string; code: AchievementCode; earned_at: string; announced: boolean }[]> {
+  const supabase = await createServiceClient()
+  const { data, error } = await supabase
+    .from('achievements')
+    .select('id, code, earned_at, announced')
+    .eq('user_id', userId)
+    .order('earned_at', { ascending: true })
+  if (error) throw new Error(`Failed to fetch achievements: ${error.message}`)
+  return (data ?? []) as { id: string; code: AchievementCode; earned_at: string; announced: boolean }[]
+}
+
 export async function getUnannouncedAchievements(
   userId: string
 ): Promise<{ id: string; code: AchievementCode; earned_at: string }[]> {

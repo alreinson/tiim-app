@@ -1,13 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { Archive } from 'lucide-react'
+import { Archive, Flame } from 'lucide-react'
 import {
   ResponsiveContainer, AreaChart, Area,
-  XAxis, YAxis, Tooltip, CartesianGrid, BarChart, Bar, Legend,
+  XAxis, YAxis, Tooltip, CartesianGrid,
 } from 'recharts'
 import { TeamMemberCard } from './team-member-card'
 import { HistoryTimeline } from './history-timeline'
+import { getAvatarGradient, getInitials } from '@/lib/avatar'
 import type { User, Checkin } from '@/types'
 
 interface MemberStat {
@@ -42,12 +43,36 @@ interface Props {
   totalGoals: number
   currentWeek: string
   managerId: string
+  companyName: string
+}
+
+function avg(vals: (number | null)[]): number | null {
+  const nums = vals.filter((v): v is number => v != null)
+  return nums.length ? Math.round((nums.reduce((a, b) => a + b, 0) / nums.length) * 10) / 10 : null
+}
+
+function StatBar({ label, value, max = 5, color }: { label: string; value: number | null; max?: number; color: string }) {
+  const pct = value != null ? (value / max) * 100 : 0
+  return (
+    <div style={{ flex: 1 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: '6px' }}>
+        <span style={{ fontSize: '11px', color: '#667085' }}>{label}</span>
+        <span style={{ fontSize: '22px', fontWeight: 700, color: '#101828', letterSpacing: '-0.02em', lineHeight: 1 }}>
+          {value != null ? value : '—'}
+          <span style={{ fontSize: '13px', fontWeight: 400, color: '#9ca3af', marginLeft: '2px' }}>/ 5</span>
+        </span>
+      </div>
+      <div style={{ height: '5px', background: '#f3f4f6', borderRadius: '9999px', overflow: 'hidden' }}>
+        <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: '9999px', transition: 'width 0.3s ease' }} />
+      </div>
+    </div>
+  )
 }
 
 export function TeamDashboardClient({
   teamMembers, memberStats, checkedInIds, trendData,
-  timelineCheckins, totalBlockers, onTrackGoals, totalGoals,
-  currentWeek, managerId,
+  timelineCheckins, onTrackGoals, totalGoals,
+  currentWeek, managerId, companyName,
 }: Props) {
   const [tab, setTab] = useState<'team' | 'individuals' | 'history'>('team')
 
@@ -55,173 +80,198 @@ export function TeamDashboardClient({
   const members = teamMembers.filter((m) => m.id !== managerId)
   const checkedInCount = members.filter((m) => checkedInSet.has(m.id)).length
 
-  const avgMood = memberStats.filter((m) => m.mood).length
-    ? (memberStats.reduce((a, m) => a + (m.mood ?? 0), 0) / memberStats.filter((m) => m.mood).length).toFixed(1)
-    : '—'
+  const teamMood     = avg(memberStats.map((m) => m.mood))
+  const teamEnergy   = avg(memberStats.map((m) => m.energy))
+  const teamWorkload = avg(memberStats.map((m) => m.workload))
+
+  const weekLabel = currentWeek.replace(/\d{4}-W/, 'N')
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
+
       {/* Header + tabs */}
-      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
         <div>
-          <h1 style={{ margin: 0 }}>Meeskonna ülevaade</h1>
-          <p style={{ fontSize: '14px', color: 'var(--pz-fg-3)', marginTop: '6px' }}>
-            {members.length} liiget · {checkedInCount}/{members.length} logisid sisse {currentWeek.replace('-', ' ')}
+          <h1 style={{ margin: '0 0 4px', fontSize: '28px', fontWeight: 700, color: '#101828', letterSpacing: '-0.28px', lineHeight: 1.2 }}>
+            {companyName ? `${companyName} — Tiimi ülevaade` : 'Tiimi ülevaade'}
+          </h1>
+          <p style={{ margin: 0, fontSize: '13px', color: '#4a5565' }}>
+            {members.length} tiimiliige{members.length !== 1 ? 't' : ''} · {checkedInCount}/{members.length} logisid sisse {weekLabel}
           </p>
         </div>
-        <div style={{ display: 'inline-flex', padding: '4px', background: 'white', border: '1px solid var(--pz-border)', borderRadius: 'var(--pz-radius-pill)', gap: '2px' }}>
+
+        <div style={{
+          display: 'inline-flex', alignItems: 'center',
+          background: '#fff', border: '1px solid #e5e7eb', borderRadius: '9999px',
+          padding: '4px', gap: '2px',
+        }}>
           {([
-            ['team', 'Tiim'],
+            ['team',        'Koondvaade'],
             ['individuals', 'Liikmed'],
-            ['history', 'Ajalugu'],
+            ['history',     'Ajalugu'],
           ] as const).map(([k, l]) => (
             <button
               key={k}
               onClick={() => setTab(k)}
               style={{
-                padding: '7px 16px',
-                borderRadius: 'var(--pz-radius-pill)',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: '13px',
-                fontWeight: tab === k ? 600 : 400,
-                background: tab === k ? 'var(--pz-grad-primary)' : 'transparent',
-                color: tab === k ? '#fff' : 'var(--pz-fg-3)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                transition: 'background 180ms, color 180ms',
-              }}
+                display: 'inline-flex', alignItems: 'center', gap: '5px',
+                padding: '6px 14px', borderRadius: '9999px', border: 'none',
+                cursor: 'pointer', fontSize: '13px', fontWeight: 500,
+                background: tab === k ? 'linear-gradient(165deg, #6030ff 0%, #1f4fd8 100%)' : 'transparent',
+                color: tab === k ? '#fff' : '#4a5565',
+                boxShadow: tab === k ? '0 1px 3px rgba(0,0,0,0.15)' : 'none',
+                transition: 'background 150ms, color 150ms',
+              } as React.CSSProperties}
             >
-              {k === 'history' && <Archive style={{ width: '13px', height: '13px' }} />}
+              {k === 'history' && <Archive style={{ width: '12px', height: '12px' }} />}
               {l}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Team aggregate tab */}
+      {/* ── Team aggregate tab ── */}
       {tab === 'team' && (
         <>
-          {/* Stat cards */}
-          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-            {[
-              { label: 'Tiimi meeleolu', value: avgMood, tip: 'Keskmine kõikide aktiivsete liikmete seas.' },
-              { label: 'Aktiivsed takistused', value: totalBlockers, warn: totalBlockers > 0 },
-              { label: 'Sisselogimised', value: `${checkedInCount}/${members.length}` },
-              { label: 'Eesmärgid graafikus', value: `${onTrackGoals}/${totalGoals}`, ok: true },
-            ].map(({ label, value, warn, ok }) => (
-              <div key={label} className="pz-card" style={{ padding: '20px', flex: '1 1 140px' }}>
-                <div style={{ fontSize: '12px', color: 'var(--pz-fg-3)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>{label}</div>
-                <div className="font-display" style={{ fontSize: '32px', fontWeight: 700, lineHeight: 1, color: warn ? 'var(--pz-danger)' : ok ? 'var(--pz-success)' : 'var(--pz-fg-1)' }}>
-                  {value}
+          {/* Weekly digest card */}
+          <div style={{
+            background: '#fff', border: '1px solid #e5e7eb', borderRadius: '10px',
+            boxShadow: '0 1px 2px rgba(16,24,40,0.05)', overflow: 'hidden',
+          }}>
+            {/* Digest header */}
+            <div style={{
+              padding: '18px 20px 16px',
+              borderBottom: '1px solid #e5e7eb',
+              display: 'flex', alignItems: 'center', gap: '12px',
+            }}>
+              <div style={{
+                width: '36px', height: '36px', borderRadius: '10px', flexShrink: 0,
+                background: 'linear-gradient(135deg, #f4f3ff 0%, #fce7fb 100%)',
+                display: 'grid', placeItems: 'center',
+              }}>
+                <span style={{ fontSize: '16px' }}>✨</span>
+              </div>
+              <div style={{ flex: 1 }}>
+                <p className="font-display" style={{ margin: '0 0 2px', fontSize: '15px', fontWeight: 600, color: '#101828', letterSpacing: '-0.15px' }}>
+                  AI koondülevaade · {weekLabel}
+                </p>
+                <p style={{ margin: 0, fontSize: '11px', color: '#667085' }}>
+                  Reaalajas andmed · {members.length} tiimiliige{members.length !== 1 ? 't' : ''}
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <div style={{
+                  fontSize: '11px', fontWeight: 500,
+                  background: onTrackGoals >= totalGoals && totalGoals > 0 ? '#ecfdf3' : '#f9fafb',
+                  color: onTrackGoals >= totalGoals && totalGoals > 0 ? '#00a63e' : '#667085',
+                  padding: '3px 10px', borderRadius: '9999px',
+                }}>
+                  {onTrackGoals}/{totalGoals} eesmärki graafikus
                 </div>
               </div>
-            ))}
-          </div>
+            </div>
 
-          {/* Trend chart + streak leaderboard */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: '16px', alignItems: 'start' }}>
-            <div className="pz-card" style={{ padding: '20px' }}>
-              <h3 style={{ margin: '0 0 16px' }}>Tiimi tervis · viimased 6 nädalat</h3>
-              <div style={{ height: '240px' }}>
+            {/* Stat bars */}
+            <div style={{ padding: '20px', display: 'flex', gap: '24px', borderBottom: '1px solid #e5e7eb' }}>
+              <StatBar label="Tiimi meeleolu"   value={teamMood}     color="#6030ff" />
+              <StatBar label="Tiimi energia"     value={teamEnergy}   color="#49bbff" />
+              <StatBar label="Töökoormus"        value={teamWorkload}  color="#f59e0b" />
+            </div>
+
+            {/* 6-week trend */}
+            <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb' }}>
+              <p style={{ margin: '0 0 14px', fontSize: '13px', fontWeight: 500, color: '#101828' }}>
+                6-nädalane trend
+              </p>
+              <div style={{ height: '200px' }}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={trendData}>
+                  <AreaChart data={trendData} margin={{ top: 4, right: 4, left: -16, bottom: 0 }}>
                     <defs>
                       <linearGradient id="tMood" x1="0" x2="0" y1="0" y2="1">
-                        <stop offset="0%" stopColor="#6030FF" stopOpacity={0.3} />
-                        <stop offset="100%" stopColor="#6030FF" stopOpacity={0} />
+                        <stop offset="0%" stopColor="#6030ff" stopOpacity={0.25} />
+                        <stop offset="100%" stopColor="#6030ff" stopOpacity={0} />
                       </linearGradient>
                       <linearGradient id="tEnergy" x1="0" x2="0" y1="0" y2="1">
-                        <stop offset="0%" stopColor="#49BBFF" stopOpacity={0.3} />
-                        <stop offset="100%" stopColor="#49BBFF" stopOpacity={0} />
+                        <stop offset="0%" stopColor="#49bbff" stopOpacity={0.25} />
+                        <stop offset="100%" stopColor="#49bbff" stopOpacity={0} />
                       </linearGradient>
                       <linearGradient id="tWork" x1="0" x2="0" y1="0" y2="1">
-                        <stop offset="0%" stopColor="#F59E0B" stopOpacity={0.2} />
-                        <stop offset="100%" stopColor="#F59E0B" stopOpacity={0} />
+                        <stop offset="0%" stopColor="#f59e0b" stopOpacity={0.15} />
+                        <stop offset="100%" stopColor="#f59e0b" stopOpacity={0} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--pz-border)" />
-                    <XAxis dataKey="week" stroke="var(--pz-fg-4)" fontSize={11} />
-                    <YAxis domain={[1, 5]} stroke="var(--pz-fg-4)" fontSize={11} ticks={[1,2,3,4,5]} />
-                    <Tooltip contentStyle={{ borderRadius: 10, border: '1px solid var(--pz-border)', fontSize: 12 }} />
-                    <Legend wrapperStyle={{ fontSize: 12 }} />
-                    <Area type="monotone" dataKey="mood"     name="Meeleolu"   stroke="#6030FF" fill="url(#tMood)"   strokeWidth={2} connectNulls />
-                    <Area type="monotone" dataKey="energy"   name="Energia"    stroke="#49BBFF" fill="url(#tEnergy)" strokeWidth={2} connectNulls />
-                    <Area type="monotone" dataKey="workload" name="Töökoormus" stroke="#F59E0B" fill="url(#tWork)"   strokeWidth={2} strokeDasharray="5 4" connectNulls />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+                    <XAxis dataKey="week" stroke="#667085" fontSize={11} tickLine={false} axisLine={false} />
+                    <YAxis domain={[1, 5]} stroke="#667085" fontSize={11} tickLine={false} axisLine={false} ticks={[1,2,3,4,5]} />
+                    <Tooltip contentStyle={{ borderRadius: 10, border: '1px solid #e5e7eb', fontSize: 11 }} />
+                    <Area type="monotone" dataKey="mood"     name="Meeleolu"   stroke="#6030ff" fill="url(#tMood)"   strokeWidth={2} connectNulls />
+                    <Area type="monotone" dataKey="energy"   name="Energia"    stroke="#49bbff" fill="url(#tEnergy)" strokeWidth={2} connectNulls />
+                    <Area type="monotone" dataKey="workload" name="Töökoormus" stroke="#f59e0b" fill="url(#tWork)"   strokeWidth={2} strokeDasharray="5 4" connectNulls />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
             </div>
 
             {/* Streak leaderboard */}
-            <div className="pz-card" style={{ padding: '20px' }}>
-              <h3 style={{ margin: '0 0 16px' }}>🔥 Streak edetabel</h3>
+            <div style={{ padding: '20px' }}>
+              <p style={{ margin: '0 0 14px', fontSize: '13px', fontWeight: 500, color: '#101828', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Flame style={{ width: '14px', height: '14px', color: '#f59e0b' }} />
+                Seeria edetabel
+              </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {[...memberStats].sort((a, b) => b.streak - a.streak).map((m, i) => (
                   <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{ fontSize: '12px', color: 'var(--pz-fg-4)', width: '16px', textAlign: 'center' }}>{i + 1}</span>
-                    <div
-                      style={{
-                        width: '32px', height: '32px', borderRadius: '50%',
-                        background: m.avatarGradient, display: 'grid', placeItems: 'center',
-                        fontSize: '11px', fontWeight: 700, color: '#fff', flexShrink: 0,
-                      }}
-                    >
-                      {m.name.split(' ').map((p) => p[0]).slice(0, 2).join('')}
+                    <span style={{
+                      width: '18px', textAlign: 'center', flexShrink: 0,
+                      fontSize: '12px', fontWeight: 600,
+                      color: i === 0 ? '#f59e0b' : i === 1 ? '#9ca3af' : i === 2 ? '#92400e' : '#667085',
+                    }}>
+                      {i + 1}
+                    </span>
+                    <div style={{
+                      width: '32px', height: '32px', borderRadius: '50%', flexShrink: 0,
+                      background: getAvatarGradient(m.id), display: 'grid', placeItems: 'center',
+                    }}>
+                      <span style={{ fontSize: '11px', fontWeight: 600, color: '#fff' }}>{getInitials(m.name)}</span>
                     </div>
-                    <span style={{ flex: 1, fontSize: '13px', color: 'var(--pz-fg-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</span>
-                    <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--pz-fg-1)' }}>{m.streak}🔥</span>
+                    <span style={{ flex: 1, fontSize: '13px', color: '#101828', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {m.name}
+                    </span>
+                    <span style={{ fontSize: '13px', fontWeight: 700, color: '#101828' }}>{m.streak}</span>
+                    <Flame style={{ width: '13px', height: '13px', color: '#f59e0b', flexShrink: 0 }} />
                   </div>
                 ))}
                 {memberStats.length === 0 && (
-                  <p style={{ fontSize: '13px', color: 'var(--pz-fg-4)', margin: 0 }}>Andmed puuduvad.</p>
+                  <p style={{ margin: 0, fontSize: '13px', color: '#667085' }}>Andmed puuduvad.</p>
                 )}
               </div>
             </div>
           </div>
-
-          {/* Workload distribution */}
-          {memberStats.some((m) => m.mood || m.energy || m.workload) && (
-            <div className="pz-card" style={{ padding: '20px' }}>
-              <h3 style={{ margin: '0 0 16px' }}>Selle nädala töökoormus</h3>
-              <div style={{ height: '200px' }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={memberStats.map((m) => ({ name: m.name.split(' ')[0], Meeleolu: m.mood, Energia: m.energy, Töökoormus: m.workload }))}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--pz-border)" />
-                    <XAxis dataKey="name" stroke="var(--pz-fg-4)" fontSize={11} />
-                    <YAxis domain={[0, 5]} stroke="var(--pz-fg-4)" fontSize={11} ticks={[0,1,2,3,4,5]} />
-                    <Tooltip contentStyle={{ borderRadius: 10, border: '1px solid var(--pz-border)', fontSize: 12 }} />
-                    <Legend wrapperStyle={{ fontSize: 12 }} />
-                    <Bar dataKey="Meeleolu"   fill="#6030FF" radius={[4,4,0,0]} />
-                    <Bar dataKey="Energia"    fill="#49BBFF" radius={[4,4,0,0]} />
-                    <Bar dataKey="Töökoormus" fill="#F59E0B" radius={[4,4,0,0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          )}
         </>
       )}
 
-      {/* Individuals tab */}
+      {/* ── Individuals tab ── */}
       {tab === 'individuals' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
           {members.map((member) => (
             <TeamMemberCard
               key={member.id}
               member={member}
               hasCheckedInThisWeek={checkedInSet.has(member.id)}
               activeBlockerCount={memberStats.find((s) => s.id === member.id)?.blockerCount ?? 0}
+              streak={memberStats.find((s) => s.id === member.id)?.streak ?? 0}
             />
           ))}
         </div>
       )}
 
-      {/* History tab */}
+      {/* ── History tab ── */}
       {tab === 'history' && (
-        <div>
-          <p style={{ fontSize: '14px', color: 'var(--pz-fg-3)', marginBottom: '16px' }}>
+        <div style={{
+          background: '#fff', border: '1px solid #e5e7eb', borderRadius: '10px',
+          padding: '20px', boxShadow: '0 1px 2px rgba(16,24,40,0.05)',
+        }}>
+          <p style={{ margin: '0 0 16px', fontSize: '13px', color: '#4a5565' }}>
             Kõik eesmärgid, projektid, ülesanded, takistused ja sisselogimised üle tiimi.
           </p>
           <HistoryTimeline checkins={timelineCheckins} />

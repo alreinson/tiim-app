@@ -10,15 +10,18 @@ export async function POST(request: Request): Promise<Response> {
   if (!user) return Response.json({ error: 'User not found' }, { status: 404 })
   if (!user.company_id) return Response.json({ error: 'No company' }, { status: 400 })
 
-  const { content } = await request.json()
+  const body = await request.json()
+  const { content, pinned } = body
   if (!content?.trim()) return Response.json({ error: 'content is required' }, { status: 400 })
+
+  const canPin = user.role === 'manager' || user.role === 'admin'
 
   try {
     const item = await createNewsItem({
       author_id: user.id,
       company_id: user.company_id,
       content: content.trim(),
-      pinned: false,
+      pinned: canPin && pinned === true,
     })
     return Response.json(item, { status: 201 })
   } catch (err) {

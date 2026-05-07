@@ -1,5 +1,4 @@
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
 import { getUser } from '@/lib/auth/session'
 import { getUsersByCompany } from '@/lib/db/users'
 import { getGoalsByCompany } from '@/lib/db/goals'
@@ -7,6 +6,7 @@ import { getCheckinsByCompany } from '@/lib/db/checkins'
 import { getActiveBlockersByCompany } from '@/lib/db/blockers'
 import { getNewsByCompany } from '@/lib/db/news'
 import { getStreaksByUserIds } from '@/lib/db/streaks'
+import { getCompany } from '@/lib/db/companies'
 import { TeamDashboardClient } from '@/components/dashboard/team-dashboard-client'
 import { AnnouncementsFeed } from '@/components/shared/announcements-feed'
 import { PendingProposals } from '@/components/goals/pending-proposals'
@@ -60,7 +60,7 @@ export default async function TeamDashboardPage() {
 
   const currentWeek = getCurrentWeek()
 
-  const [teamMembers, weekCheckins, activeBlockers, goals, myCheckins, newsItems, historyCheckins] = await Promise.all([
+  const [teamMembers, weekCheckins, activeBlockers, goals, myCheckins, newsItems, historyCheckins, company] = await Promise.all([
     getUsersByCompany(user.company_id),
     getCheckinsByCompany(user.company_id, currentWeek),
     getActiveBlockersByCompany(user.company_id),
@@ -68,6 +68,7 @@ export default async function TeamDashboardPage() {
     getCheckinsByCompany(user.company_id, currentWeek),
     getNewsByCompany(user.company_id),
     getCheckinsByCompany(user.company_id),
+    getCompany(user.company_id),
   ])
 
   const streakMap = await getStreaksByUserIds(teamMembers.map((m) => m.id))
@@ -123,34 +124,39 @@ export default async function TeamDashboardPage() {
         totalGoals={goals.length}
         currentWeek={currentWeek}
         managerId={user.id}
+        companyName={company?.name ?? ''}
       />
 
       {/* Active blockers */}
       {activeBlockers.length > 0 && (
         <section>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-            <h2 style={{ margin: 0 }}>Lahendamist vajavad takistused</h2>
-            <span style={{ fontSize: '12px', fontWeight: 700, color: '#fff', background: 'var(--pz-danger)', borderRadius: 'var(--pz-radius-pill)', padding: '2px 9px' }}>
+            <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: '#101828' }}>Lahendamist vajavad takistused</h2>
+            <span style={{ fontSize: '11px', fontWeight: 700, color: '#fff', background: '#dc2626', borderRadius: '9999px', padding: '2px 8px' }}>
               {activeBlockers.length}
             </span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {activeBlockers.map((blocker) => (
-              <div key={blocker.id} className="pz-card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
-                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--pz-danger)', marginTop: '5px', flexShrink: 0 }} />
+              <div key={blocker.id} style={{
+                background: '#fff', border: '1px solid #e5e7eb', borderRadius: '10px',
+                padding: '16px 20px', display: 'flex', alignItems: 'flex-start', gap: '16px',
+                boxShadow: '0 1px 2px rgba(16,24,40,0.05)',
+              }}>
+                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#dc2626', marginTop: '5px', flexShrink: 0 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' }}>
-                    <span style={{ fontWeight: 600, fontSize: '14px', color: 'var(--pz-fg-1)' }}>
+                    <span style={{ fontWeight: 600, fontSize: '14px', color: '#101828' }}>
                       {teamMembers.find((m) => m.id === blocker.user_id)?.name ?? ''}
                     </span>
-                    <span style={{ fontSize: '11px', fontWeight: 500, color: 'var(--pz-fg-3)', background: 'rgba(74,85,101,0.08)', border: '1px solid var(--pz-border)', borderRadius: 'var(--pz-radius-pill)', padding: '1px 8px' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 500, color: '#667085', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '9999px', padding: '1px 8px' }}>
                       {supportTypeLabel(blocker.support_type)}
                     </span>
                   </div>
-                  <div style={{ fontSize: '13px', color: 'var(--pz-fg-2)', marginBottom: '6px' }}>
+                  <div style={{ fontSize: '13px', color: '#4a5565', marginBottom: '6px' }}>
                     {truncate(blocker.summary, 100)}
                   </div>
-                  <div style={{ fontSize: '12px', color: 'var(--pz-fg-3)' }}>
+                  <div style={{ fontSize: '12px', color: '#9ca3af' }}>
                     {daysSince(blocker.created_at) === 0 ? 'Täna' : `${daysSince(blocker.created_at)} päeva tagasi`}
                   </div>
                 </div>
@@ -163,17 +169,21 @@ export default async function TeamDashboardPage() {
       {/* Manager's own PPP */}
       {myThisWeekCheckin && (myThisWeekCheckin.progress.length > 0 || myThisWeekCheckin.plans.length > 0 || myThisWeekCheckin.problems.length > 0) && (
         <section>
-          <h2 style={{ margin: '0 0 16px' }}>Minu PPP selle nädal</h2>
+          <h2 style={{ margin: '0 0 16px', fontSize: '18px', fontWeight: 600, color: '#101828' }}>Minu PPP selle nädal</h2>
           <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
             {[
-              { label: 'Progress', items: myThisWeekCheckin.progress, color: '#00B894' },
-              { label: 'Plaanid', items: myThisWeekCheckin.plans, color: 'var(--pz-violet)' },
-              { label: 'Probleemid', items: myThisWeekCheckin.problems, color: 'var(--pz-danger)' },
+              { label: 'Progress', items: myThisWeekCheckin.progress, color: '#00a63e' },
+              { label: 'Plaanid', items: myThisWeekCheckin.plans, color: '#6030ff' },
+              { label: 'Probleemid', items: myThisWeekCheckin.problems, color: '#dc2626' },
             ].map(({ label, items, color }) => items.length > 0 && (
-              <div key={label} className="pz-card" style={{ flex: '1 1 200px', padding: '16px' }}>
-                <p style={{ margin: '0 0 10px', fontSize: '12px', fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</p>
+              <div key={label} style={{
+                flex: '1 1 200px',
+                background: '#fff', border: '1px solid #e5e7eb', borderRadius: '10px',
+                padding: '16px', boxShadow: '0 1px 2px rgba(16,24,40,0.05)',
+              }}>
+                <p style={{ margin: '0 0 10px', fontSize: '11px', fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</p>
                 <ul style={{ margin: 0, paddingLeft: '16px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  {items.map((item, i) => <li key={i} style={{ fontSize: '13px', color: 'var(--pz-fg-1)', lineHeight: 1.4 }}>{item}</li>)}
+                  {items.map((item, i) => <li key={i} style={{ fontSize: '13px', color: '#344054', lineHeight: 1.5 }}>{item}</li>)}
                 </ul>
               </div>
             ))}
@@ -184,7 +194,7 @@ export default async function TeamDashboardPage() {
       {/* Team members' shared PPP */}
       {weekCheckins.some((c) => c.user_id !== user.id && (c.progress.length > 0 || c.plans.length > 0 || c.problems.length > 0)) && (
         <section>
-          <h2 style={{ margin: '0 0 16px' }}>Tiimi PPP selle nädal</h2>
+          <h2 style={{ margin: '0 0 16px', fontSize: '18px', fontWeight: 600, color: '#101828' }}>Tiimi PPP selle nädal</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {weekCheckins
               .filter((c) => c.user_id !== user.id)
@@ -197,18 +207,21 @@ export default async function TeamDashboardPage() {
                 const sharedProblems = (sharing.problems ?? checkin.problems.map((_: string, i: number) => i)).map((i: number) => checkin.problems[i]).filter(Boolean)
                 if (!sharedProgress.length && !sharedPlans.length && !sharedProblems.length) return null
                 return (
-                  <div key={checkin.id} className="pz-card" style={{ padding: '16px' }}>
-                    <p style={{ margin: '0 0 12px', fontWeight: 600, fontSize: '14px', color: 'var(--pz-fg-1)' }}>{member.name}</p>
+                  <div key={checkin.id} style={{
+                    background: '#fff', border: '1px solid #e5e7eb', borderRadius: '10px',
+                    padding: '16px', boxShadow: '0 1px 2px rgba(16,24,40,0.05)',
+                  }}>
+                    <p style={{ margin: '0 0 12px', fontWeight: 600, fontSize: '14px', color: '#101828' }}>{member.name}</p>
                     <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
                       {[
-                        { label: 'Progress', items: sharedProgress, color: '#00B894' },
-                        { label: 'Plaanid', items: sharedPlans, color: 'var(--pz-violet)' },
-                        { label: 'Probleemid', items: sharedProblems, color: 'var(--pz-danger)' },
+                        { label: 'Progress', items: sharedProgress, color: '#00a63e' },
+                        { label: 'Plaanid', items: sharedPlans, color: '#6030ff' },
+                        { label: 'Probleemid', items: sharedProblems, color: '#dc2626' },
                       ].map(({ label, items, color }) => items.length > 0 && (
                         <div key={label} style={{ flex: '1 1 140px' }}>
                           <p style={{ margin: '0 0 6px', fontSize: '11px', fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</p>
                           <ul style={{ margin: 0, paddingLeft: '14px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            {items.map((item: string, i: number) => <li key={i} style={{ fontSize: '12px', color: 'var(--pz-fg-2)', lineHeight: 1.4 }}>{item}</li>)}
+                            {items.map((item: string, i: number) => <li key={i} style={{ fontSize: '12px', color: '#4a5565', lineHeight: 1.5 }}>{item}</li>)}
                           </ul>
                         </div>
                       ))}

@@ -58,6 +58,17 @@ export async function createBlocker(
   return created as Blocker
 }
 
+export async function getResolvedBlockerUserIdsByCompany(companyId: string): Promise<string[]> {
+  const supabase = await createServiceClient()
+  const { data, error } = await supabase
+    .from('blockers')
+    .select('user_id')
+    .eq('company_id', companyId)
+    .eq('resolved', true)
+  if (error) throw new Error(`Failed to fetch resolved blockers: ${error.message}`)
+  return [...new Set((data ?? []).map((r: { user_id: string }) => r.user_id))]
+}
+
 export async function updateBlocker(id: string, data: Partial<Blocker>): Promise<Blocker> {
   const supabase = await createServiceClient()
 
