@@ -11,7 +11,8 @@ import { getStreaksByUserIds } from '@/lib/db/streaks'
 import { GoalProgressBar } from '@/components/goals/goal-progress-bar'
 import { AchievementBanner } from '@/components/dashboard/achievement-banner'
 import { EnergyPulseChart } from '@/components/dashboard/energy-pulse-chart'
-import { MessageSquare, Flame, Sparkles } from 'lucide-react'
+import { MessageSquare, Flame } from 'lucide-react'
+import { FirstCheckinModal } from '@/components/dashboard/first-checkin-modal'
 import type { GoalStatus } from '@/types'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -145,49 +146,10 @@ export default async function MeDashboardPage() {
   const energyTrend  = computeTrend(checkins, currentWeek, 'energy')
   const workloadTrend = computeTrend(checkins, currentWeek, 'workload')
 
-  // ── Empty state for brand-new users ───────────────────────────────────────
-  if (checkins.length === 0) {
-    return (
-      <div style={{
-        flex: 1, display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center',
-        textAlign: 'center', padding: '48px 24px', gap: '32px',
-      }}>
-        <div style={{
-          width: '80px', height: '80px', borderRadius: '50%',
-          background: 'var(--pz-grad-primary)',
-          display: 'grid', placeItems: 'center',
-        }}>
-          <Sparkles style={{ width: '36px', height: '36px', color: '#fff' }} />
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxWidth: '460px' }}>
-          <h1 style={{ margin: 0, fontSize: '28px', lineHeight: 1.25 }}>
-            Tere, {user.name.split(' ')[0]}! 👋
-          </h1>
-          <p style={{ margin: 0, fontSize: '16px', color: 'var(--pz-fg-2)', lineHeight: 1.6 }}>
-            Tee oma esimene sissekanne ja näed kohe ka kõiki rakenduse funktsionaalsusi.
-          </p>
-        </div>
-        <Link href="/chat" style={{
-          display: 'inline-flex', alignItems: 'center', gap: '10px',
-          padding: '14px 28px', borderRadius: 'var(--pz-radius-md)',
-          background: 'var(--pz-grad-primary)', color: '#fff',
-          fontWeight: 600, fontSize: '15px', textDecoration: 'none',
-          boxShadow: '0 4px 16px rgba(96,48,255,0.3)',
-        }}>
-          <MessageSquare style={{ width: '18px', height: '18px' }} />
-          Alusta esimest sisseregistreerimist
-        </Link>
-        <p style={{ margin: 0, fontSize: '13px', color: 'var(--pz-fg-4)' }}>
-          Võtab umbes 5 minutit
-        </p>
-      </div>
-    )
-  }
-
   // ── Main dashboard ─────────────────────────────────────────────────────────
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      {checkins.length === 0 && <FirstCheckinModal userName={user.name} />}
       {unannouncedAchievements.length > 0 && (
         <AchievementBanner achievements={unannouncedAchievements} />
       )}
