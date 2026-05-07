@@ -20,7 +20,7 @@ interface NavItem {
 const memberNav: NavItem[] = [
   { href: '/dashboard/me',   label: 'Töölaud',          icon: LayoutDashboard },
   { href: '/chat',           label: 'Iganädalane vestlus', icon: MessageSquare },
-  { href: '/goals',          label: 'Eesmärgid',         icon: Target },
+  { href: '/goals',          label: 'Eesmärgid ja ülesanded', icon: Target },
   { href: '/news',           label: 'Tiimi uudised',     icon: Newspaper },
   { href: '/achievements',   label: 'Saavutused',        icon: Trophy },
   { href: '/quarterly',      label: 'Kvartalisisselogimine', icon: Sparkles },
@@ -29,7 +29,7 @@ const memberNav: NavItem[] = [
 const managerTeamNav: NavItem[] = [
   { href: '/dashboard/team',              label: 'Tiimi töölaud',    icon: Users },
   { href: '/dashboard/team/checkins',     label: 'Tiimi sisselogimised', icon: MessageSquare },
-  { href: '/dashboard/team/goals',        label: 'Tiimi eesmärgid', icon: Target },
+  { href: '/dashboard/team/goals',        label: 'Tiimi eesmärgid ja ülesanded', icon: Target },
   { href: '/dashboard/team/news',         label: 'Tiimi uudised',    icon: Newspaper },
   { href: '/dashboard/team/analytics',    label: 'Analüütika',       icon: BarChart3 },
   { href: '/dashboard/team/achievements', label: 'Saavutused',       icon: Trophy },
@@ -38,7 +38,7 @@ const managerTeamNav: NavItem[] = [
 const managerMyNav: NavItem[] = [
   { href: '/dashboard/me',   label: 'Minu töölaud',        icon: LayoutDashboard },
   { href: '/chat',           label: 'Minu vestlus',        icon: MessageSquare },
-  { href: '/goals',          label: 'Minu eesmärgid',      icon: Target },
+  { href: '/goals',          label: 'Minu eesmärgid ja ülesanded', icon: Target },
   { href: '/news',           label: 'Uudised',             icon: Newspaper },
   { href: '/achievements',   label: 'Saavutused',          icon: Trophy },
   { href: '/quarterly',      label: 'Kvartal',             icon: Sparkles },

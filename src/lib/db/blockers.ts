@@ -69,6 +69,19 @@ export async function getResolvedBlockerUserIdsByCompany(companyId: string): Pro
   return [...new Set((data ?? []).map((r: { user_id: string }) => r.user_id))]
 }
 
+export async function getAllBlockersByCompany(
+  companyId: string
+): Promise<(Blocker & { user: { name: string; id: string } })[]> {
+  const supabase = await createServiceClient()
+  const { data, error } = await supabase
+    .from('blockers')
+    .select('*, users!inner(id, name)')
+    .eq('company_id', companyId)
+    .order('created_at', { ascending: false })
+  if (error) throw new Error(`Failed to fetch all blockers for company ${companyId}: ${error.message}`)
+  return (data ?? []) as (Blocker & { user: { name: string; id: string } })[]
+}
+
 export async function updateBlocker(id: string, data: Partial<Blocker>): Promise<Blocker> {
   const supabase = await createServiceClient()
 

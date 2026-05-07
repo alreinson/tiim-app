@@ -311,11 +311,14 @@ export default async function MeDashboardPage() {
       {/* ── Tasks + Blockers + Achievements ────────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px' }}>
 
-        {/* My tasks */}
+        {/* Goals and tasks */}
         <div className="pz-card" style={{ padding: '20px' }}>
-          <h3 style={{ margin: '0 0 14px', fontSize: '16px', fontWeight: 600, color: '#101828', letterSpacing: '-0.16px' }}>
-            Minu ülesanded
-          </h3>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#101828', letterSpacing: '-0.16px' }}>
+              Eesmärgid ja ülesanded
+            </h3>
+            <Link href="/goals" style={{ fontSize: '12px', color: '#6030ff', textDecoration: 'none', fontWeight: 500 }}>→</Link>
+          </div>
           {tasks.length === 0 ? (
             <p style={{ fontSize: '13px', color: '#667085', margin: 0 }}>Ülesandeid pole lisatud.</p>
           ) : (
@@ -393,7 +396,7 @@ export default async function MeDashboardPage() {
         <div className="pz-card" style={{ padding: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
             <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#101828', letterSpacing: '-0.16px' }}>Viimased saavutused</h3>
-            <Link href="/achievements" style={{ fontSize: '12px', color: '#6030ff', textDecoration: 'none', fontWeight: 500 }}>Kõik →</Link>
+            <Link href="/achievements" style={{ fontSize: '12px', color: '#6030ff', textDecoration: 'none', fontWeight: 500 }}>Vaata saavutusi →</Link>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
             {ACHIEVEMENT_SLOTS.map((slot) => {
@@ -430,9 +433,14 @@ export default async function MeDashboardPage() {
           <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#101828', letterSpacing: '-0.16px' }}>
             🎉 Tunnustused
           </h3>
-          <Link href="/chat" style={{ fontSize: '12px', color: '#6030ff', textDecoration: 'none', fontWeight: 500 }}>
-            Anna tunnustus →
-          </Link>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            <Link href="/news" style={{ fontSize: '12px', color: '#6030ff', textDecoration: 'none', fontWeight: 500 }}>
+              Vaata tunnustusi
+            </Link>
+            <Link href="/chat" style={{ fontSize: '12px', color: '#6030ff', textDecoration: 'none', fontWeight: 500 }}>
+              Anna tunnustus →
+            </Link>
+          </div>
         </div>
         {shoutouts.length === 0 ? (
           <p style={{ fontSize: '13px', color: '#667085', margin: 0 }}>Tunnustusi pole veel antud.</p>

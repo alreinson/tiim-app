@@ -137,6 +137,16 @@ function GoalCard({ goal, workItems, userMap }: { goal: Goal; workItems: WorkIte
                     padding: '10px 12px',
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      {proj.owner_id && userMap[proj.owner_id] && (
+                        <div style={{
+                          width: '20px', height: '20px', borderRadius: '50%', flexShrink: 0,
+                          background: getAvatarGradient(proj.owner_id), display: 'grid', placeItems: 'center',
+                        }}>
+                          <span style={{ fontSize: '8px', fontWeight: 700, color: '#fff' }}>
+                            {getInitials(userMap[proj.owner_id])}
+                          </span>
+                        </div>
+                      )}
                       <span style={{ fontSize: '13px', fontWeight: 500, color: '#101828', flex: 1 }}>
                         {proj.title}
                       </span>
@@ -165,6 +175,16 @@ function GoalCard({ goal, workItems, userMap }: { goal: Goal; workItems: WorkIte
                       width: '6px', height: '6px', borderRadius: '50%', flexShrink: 0,
                       background: ITEM_STATUS_DOT[task.status] ?? '#667085',
                     }} />
+                    {task.owner_id && userMap[task.owner_id] && (
+                      <div style={{
+                        width: '16px', height: '16px', borderRadius: '50%', flexShrink: 0,
+                        background: getAvatarGradient(task.owner_id), display: 'grid', placeItems: 'center',
+                      }}>
+                        <span style={{ fontSize: '7px', fontWeight: 700, color: '#fff' }}>
+                          {getInitials(userMap[task.owner_id])}
+                        </span>
+                      </div>
+                    )}
                     <span style={{
                       fontSize: '11px', color: '#344054', flex: 1,
                       textDecoration: task.status === 'done' ? 'line-through' : 'none',

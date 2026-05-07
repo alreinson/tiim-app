@@ -3,15 +3,33 @@ import { getUser } from '@/lib/auth/session'
 import { getUsersByCompany } from '@/lib/db/users'
 import { getGoalsByCompany } from '@/lib/db/goals'
 import { getCheckinsByCompany } from '@/lib/db/checkins'
-import { getActiveBlockersByCompany } from '@/lib/db/blockers'
+import { getActiveBlockersByCompany, getAllBlockersByCompany } from '@/lib/db/blockers'
 import { getNewsByCompany } from '@/lib/db/news'
 import { getStreaksByUserIds } from '@/lib/db/streaks'
 import { getCompany } from '@/lib/db/companies'
+import { getShoutoutsByCompany } from '@/lib/db/shoutouts'
 import { TeamDashboardClient } from '@/components/dashboard/team-dashboard-client'
 import { AnnouncementsFeed } from '@/components/shared/announcements-feed'
 import { PendingProposals } from '@/components/goals/pending-proposals'
 import { getAvatarGradient } from '@/lib/avatar'
 import type { SupportType } from '@/types'
+
+function getWeekDateRange(weekKey: string): string {
+  const [yearStr, weekStr] = weekKey.split('-W')
+  const year = parseInt(yearStr)
+  const week = parseInt(weekStr)
+  const jan4 = new Date(year, 0, 4)
+  const dow = jan4.getDay()
+  const weekOneMonday = new Date(jan4)
+  weekOneMonday.setDate(jan4.getDate() - (dow === 0 ? 6 : dow - 1))
+  const monday = new Date(weekOneMonday)
+  monday.setDate(weekOneMonday.getDate() + (week - 1) * 7)
+  const sunday = new Date(monday)
+  sunday.setDate(monday.getDate() + 6)
+  const months = ['jaan', 'veebr', 'märts', 'apr', 'mai', 'juuni', 'juuli', 'aug', 'sept', 'okt', 'nov', 'dets']
+  const fmt = (d: Date) => `${d.getDate()}. ${months[d.getMonth()]}`
+  return `${fmt(monday)} — ${fmt(sunday)} ${year}`
+}
 
 function getCurrentWeek(): string {
   const now = new Date()
@@ -60,7 +78,7 @@ export default async function TeamDashboardPage() {
 
   const currentWeek = getCurrentWeek()
 
-  const [teamMembers, weekCheckins, activeBlockers, goals, myCheckins, newsItems, historyCheckins, company] = await Promise.all([
+  const [teamMembers, weekCheckins, activeBlockers, goals, myCheckins, newsItems, historyCheckins, company, shoutouts, allBlockers] = await Promise.all([
     getUsersByCompany(user.company_id),
     getCheckinsByCompany(user.company_id, currentWeek),
     getActiveBlockersByCompany(user.company_id),
@@ -69,9 +87,12 @@ export default async function TeamDashboardPage() {
     getNewsByCompany(user.company_id),
     getCheckinsByCompany(user.company_id),
     getCompany(user.company_id),
+    getShoutoutsByCompany(user.company_id, 3),
+    getAllBlockersByCompany(user.company_id),
   ])
 
   const streakMap = await getStreaksByUserIds(teamMembers.map((m) => m.id))
+  const weekDateRange = getWeekDateRange(currentWeek)
 
   const myThisWeekCheckin = myCheckins.find((c) => c.user_id === user.id) ?? null
   const checkedInUserIds = weekCheckins.map((c) => c.user_id)
@@ -123,8 +144,19 @@ export default async function TeamDashboardPage() {
         onTrackGoals={onTrackGoals}
         totalGoals={goals.length}
         currentWeek={currentWeek}
+        weekDateRange={weekDateRange}
         managerId={user.id}
         companyName={company?.name ?? ''}
+        shoutouts={shoutouts}
+        allBlockers={allBlockers.map((b) => ({
+          id: b.id,
+          user_id: b.user_id,
+          summary: b.summary,
+          support_type: b.support_type,
+          resolved: b.resolved,
+          created_at: b.created_at,
+          memberName: b.user.name,
+        }))}
       />
 
       {/* Active blockers */}
