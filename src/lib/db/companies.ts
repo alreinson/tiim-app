@@ -1,7 +1,8 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import type { Company } from '@/types'
 
-export async function getCompany(id: string): Promise<Company | null> {
+export async function getCompany(id: string | null | undefined): Promise<Company | null> {
+  if (!id) return null
   const supabase = await createServiceClient()
 
   const { data, error } = await supabase

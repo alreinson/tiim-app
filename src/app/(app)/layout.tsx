@@ -10,7 +10,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   try {
     dbUser = await getUser()
-    if (dbUser) {
+    if (dbUser && dbUser.company_id) {
       company = await getCompany(dbUser.company_id)
     }
   } catch (e) {
