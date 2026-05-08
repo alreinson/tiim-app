@@ -32,10 +32,11 @@ Return ONLY valid JSON, no extra text:
 {
   "progress": ["max 3 short bullets of what was accomplished or went well"],
   "plans": ["max 3 short bullets of plans or goals for this week"],
-  "problems": ["max 3 short bullets of blockers, challenges or problems mentioned"]
+  "problems": ["max 3 short bullets of blockers, challenges or problems mentioned"],
+  "wins": ["max 2 short bullets of personal wins — things the person is proud of this week"]
 }
 
-If a category wasn't discussed, return an empty array for it.`,
+If a category wasn't discussed, return an empty array for it. The wins array should capture moments of pride or personal achievement mentioned, distinct from general progress.`,
         },
       ],
     })

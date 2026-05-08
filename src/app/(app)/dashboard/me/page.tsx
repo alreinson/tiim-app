@@ -5,11 +5,9 @@ import { getGoalsByOwner } from '@/lib/db/goals'
 import { getCheckinsByUser } from '@/lib/db/checkins'
 import { getBlockersByUser } from '@/lib/db/blockers'
 import { getShoutoutsByCompany } from '@/lib/db/shoutouts'
-import { getUnannouncedAchievements, getAllAchievementsByUser } from '@/lib/db/achievements'
 import { getWorkItemsByOwner } from '@/lib/db/work-items'
 import { getStreaksByUserIds } from '@/lib/db/streaks'
 import { GoalProgressBar } from '@/components/goals/goal-progress-bar'
-import { AchievementBanner } from '@/components/dashboard/achievement-banner'
 import { EnergyPulseChart } from '@/components/dashboard/energy-pulse-chart'
 import { MessageSquare, Flame } from 'lucide-react'
 import { FirstCheckinModal } from '@/components/dashboard/first-checkin-modal'
@@ -99,17 +97,6 @@ function StatusPill({ status }: { status: GoalStatus }) {
   )
 }
 
-// ─── Achievement config ───────────────────────────────────────────────────────
-
-const ACHIEVEMENT_SLOTS = [
-  { code: 'streak_3',     emoji: '🔥', label: 'On Fire'     },
-  { code: 'streak_7',     emoji: '💎', label: 'Diamond'     },
-  { code: 'first_checkin',emoji: '🎯', label: 'Esimene samm'},
-  { code: 'streak_30',    emoji: '📈', label: 'Järjekindel' },
-  { code: '__future_1',   emoji: '🛡️', label: 'Kaitsja'    },
-  { code: '__future_2',   emoji: '🤝', label: 'Tiimimängija'},
-]
-
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function MeDashboardPage() {
@@ -122,14 +109,12 @@ export default async function MeDashboardPage() {
   const months = ['jaanuar', 'veebruar', 'märts', 'aprill', 'mai', 'juuni', 'juuli', 'august', 'september', 'oktoober', 'november', 'detsember']
   const dateLabel = `${days[now.getDay()]}, ${now.getDate()}. ${months[now.getMonth()]} ${now.getFullYear()}`
 
-  const [goals, checkins, blockers, workItems, shoutouts, unannouncedAchievements, allAchievements, streakMap] = await Promise.all([
+  const [goals, checkins, blockers, workItems, shoutouts, streakMap] = await Promise.all([
     getGoalsByOwner(user.id),
     getCheckinsByUser(user.id, 10),
     getBlockersByUser(user.id),
     getWorkItemsByOwner(user.id),
     getShoutoutsByCompany(user.company_id, 3),
-    getUnannouncedAchievements(user.id),
-    getAllAchievementsByUser(user.id),
     getStreaksByUserIds([user.id]),
   ])
 
@@ -140,7 +125,9 @@ export default async function MeDashboardPage() {
   const trendData = buildTrendData(checkins)
   const tasks = workItems.filter((w) => w.type === 'task').slice(0, 5)
 
-  const earnedCodes = new Set(allAchievements.map((a) => a.code))
+  const recentWins = checkins
+    .flatMap((c) => (c.wins ?? []).map((w) => ({ text: w, created_at: c.created_at })))
+    .slice(0, 6)
 
   const moodTrend    = computeTrend(checkins, currentWeek, 'mood')
   const energyTrend  = computeTrend(checkins, currentWeek, 'energy')
@@ -150,9 +137,6 @@ export default async function MeDashboardPage() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {checkins.length === 0 && <FirstCheckinModal userName={user.name} />}
-      {unannouncedAchievements.length > 0 && (
-        <AchievementBanner achievements={unannouncedAchievements} />
-      )}
 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
@@ -216,7 +200,7 @@ export default async function MeDashboardPage() {
             <Flame style={{ width: '22px', height: '22px', color: '#f59e0b' }} />
           </div>
           <div style={{ fontSize: '11px', color: '#667085' }}>
-            {streak >= 30 ? 'On Fire märk teenitud' : streak >= 7 ? 'Diamond märk teenitud' : `${streak} nädalat järjest`}
+            {streak === 1 ? '1 nädal järjest' : `${streak} nädalat järjest`}
           </div>
         </div>
       </div>
@@ -354,38 +338,30 @@ export default async function MeDashboardPage() {
           )}
         </div>
 
-        {/* Recent achievements */}
+        {/* Recent wins */}
         <div className="pz-card" style={{ padding: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#101828', letterSpacing: '-0.16px' }}>Viimased saavutused</h3>
-            <Link href="/achievements" style={{ fontSize: '12px', color: '#6030ff', textDecoration: 'none', fontWeight: 500 }}>Vaata saavutusi →</Link>
+            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#101828', letterSpacing: '-0.16px' }}>⭐ Minu võidud</h3>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
-            {ACHIEVEMENT_SLOTS.map((slot) => {
-              const earned = earnedCodes.has(slot.code as never)
-              return (
-                <div
-                  key={slot.code}
-                  title={slot.label}
-                  style={{
-                    borderRadius: '10px',
-                    aspectRatio: '1',
-                    display: 'grid',
-                    placeItems: 'center',
-                    fontSize: '22px',
-                    background: earned
-                      ? 'linear-gradient(135deg, #f4f3ff 0%, #fce7fb 100%)'
-                      : '#f9fafb',
-                    opacity: earned ? 1 : 0.4,
-                    border: earned ? '1px solid rgba(96,48,255,0.12)' : '1px solid #e5e7eb',
-                    filter: earned ? 'none' : 'grayscale(1)',
-                  }}
-                >
-                  {slot.emoji}
+          {recentWins.length === 0 ? (
+            <p style={{ margin: 0, fontSize: '13px', color: '#667085', lineHeight: 1.5 }}>
+              Võidud ilmuvad siia pärast nädalast sisselogimist.
+            </p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {recentWins.map((win, i) => (
+                <div key={i} style={{
+                  display: 'flex', alignItems: 'flex-start', gap: '8px',
+                  padding: '8px 10px', borderRadius: '8px',
+                  background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
+                  border: '1px solid rgba(245,158,11,0.2)',
+                }}>
+                  <span style={{ fontSize: '13px', flexShrink: 0 }}>⭐</span>
+                  <span style={{ fontSize: '13px', color: '#344054', lineHeight: 1.4 }}>{win.text}</span>
                 </div>
-              )
-            })}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

@@ -6,7 +6,7 @@ import type { UserRole } from '@/types'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type CheckInStep = 'mood' | 'context' | 'progress' | 'plans' | 'problems' | 'carryover' | 'summary' | 'done'
+type CheckInStep = 'mood' | 'context' | 'progress' | 'wins' | 'plans' | 'problems' | 'carryover' | 'summary' | 'done'
 
 interface Msg {
   id: number
@@ -22,6 +22,7 @@ interface PPP {
   progress: string[]
   plans: string[]
   problems: string[]
+  wins: string[]
 }
 
 interface Props {
@@ -245,6 +246,19 @@ function SummaryCard({
           </div>
         )}
 
+        {data.wins.length > 0 && (
+          <div>
+            <div style={{ fontSize: '10px', fontWeight: 700, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>⭐ Võidud</div>
+            <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {data.wins.map((item, i) => (
+                <li key={i} style={{ display: 'flex', gap: '8px', fontSize: '13px', color: '#344054' }}>
+                  <span style={{ color: '#f59e0b', flexShrink: 0 }}>•</span>{item}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         {data.problems.length > 0 && (
           <div>
             <div style={{ fontSize: '10px', fontWeight: 700, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>! Probleemid</div>
@@ -425,7 +439,17 @@ export function ChatClient({
       setIsThinking(true)
       setTimeout(() => {
         setIsThinking(false)
-        addTimMsg('Tubli töö! 🎉 Mida plaanid järgmisel nädalal teha?')
+        addTimMsg('Tubli töö! 🎉 Millega oled sel nädalal kõige rohkem rahul?')
+        setStep('wins')
+      }, 700)
+      return
+    }
+
+    if (step === 'wins') {
+      setIsThinking(true)
+      setTimeout(() => {
+        setIsThinking(false)
+        addTimMsg('Tore kuulda! Mida plaanid järgmisel nädalal teha?')
         setStep('plans')
       }, 700)
       return
@@ -478,7 +502,7 @@ export function ChatClient({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: conversationMsgs }),
       })
-      const ppp: PPP = res.ok ? await res.json() : { progress: [], plans: [], problems: [] }
+      const ppp: PPP = res.ok ? await res.json() : { progress: [], plans: [], problems: [], wins: [] }
 
       setIsThinking(false)
       setMsgs((prev) => [
@@ -497,7 +521,7 @@ export function ChatClient({
   // ── Save check-in ────────────────────────────────────────────────────────────
   async function submitCheckin() {
     const summaryMsg = msgs.find((m) => m.type === 'summary')
-    const ppp = summaryMsg?.summaryData ?? { progress: [], plans: [], problems: [] }
+    const ppp = summaryMsg?.summaryData ?? { progress: [], plans: [], problems: [], wins: [] }
 
     setSubmitting(true)
     try {
@@ -515,6 +539,7 @@ export function ChatClient({
           progress: ppp.progress,
           plans: ppp.plans,
           problems: ppp.problems,
+          wins: ppp.wins ?? [],
           sharing: isManager ? {
             progress: ppp.progress.map((_, i) => i),
             plans: ppp.plans.map((_, i) => i),

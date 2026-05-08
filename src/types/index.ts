@@ -90,6 +90,7 @@ export interface Checkin {
   progress: string[]
   plans: string[]
   problems: string[]
+  wins: string[]
   sharing: CheckinSharing
   mood?: number           // 1–5
   energy?: number         // 1–5
