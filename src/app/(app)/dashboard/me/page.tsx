@@ -254,7 +254,7 @@ export default async function MeDashboardPage() {
         </div>
       </div>
 
-      {/* ── Tasks + Blockers + Achievements ────────────────────────────────── */}
+      {/* ── Tasks + Blockers + Wins ──────────────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px' }}>
 
         {/* Goals and tasks */}

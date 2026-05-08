@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useState } from 'react'
-import { Archive, Sparkles, TrendingUp, TrendingDown, Minus, Activity, Trophy, Megaphone, ChevronRight } from 'lucide-react'
+import { Archive, Sparkles, TrendingUp, TrendingDown, Minus, Activity, Megaphone, ChevronRight } from 'lucide-react'
 import {
   ResponsiveContainer, LineChart, Line,
   XAxis, YAxis, Tooltip, CartesianGrid,
@@ -94,7 +94,6 @@ const STATUS_META = {
   needs_attention:  { label: 'Vajab tähelepanu', bg: '#fef3e2', color: '#f59e0b', dot: '#f59e0b' },
 }
 
-const TEAM_BADGE_EMOJIS = ['🔥', '💎', '🛡️', '🎯', '📈', '🤝']
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -323,37 +322,6 @@ export function TeamDashboardClient({
             <p style={{ margin: 0, fontSize: '13px', color: '#667085' }}>
               AI mustrite analüüs ilmub pärast mitme nädala andmete kogumist.
             </p>
-          </div>
-
-          {/* Team achievements */}
-          <div style={{
-            background: '#fff', border: '1px solid #e5e7eb', borderRadius: '10px',
-            boxShadow: '0 1px 2px rgba(16,24,40,0.05)', padding: '20px',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-              <p style={{ margin: 0, fontSize: '13px', fontWeight: 500, color: '#101828', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Trophy style={{ width: '14px', height: '14px', color: '#f59e0b' }} />
-                Tiimi saavutused
-              </p>
-              <Link href="/dashboard/team/achievements" style={{
-                display: 'inline-flex', alignItems: 'center', gap: '4px',
-                fontSize: '12px', color: '#6030ff', textDecoration: 'none', fontWeight: 500,
-              }}>
-                Vaata saavutusi <ChevronRight style={{ width: '12px', height: '12px' }} />
-              </Link>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '8px' }}>
-              {TEAM_BADGE_EMOJIS.map((emoji, i) => (
-                <div key={i} style={{
-                  aspectRatio: '1', borderRadius: '10px',
-                  display: 'grid', placeItems: 'center', fontSize: '22px',
-                  background: 'linear-gradient(135deg, #f4f3ff 0%, #fce7fb 100%)',
-                  border: '1px solid rgba(96,48,255,0.12)',
-                }}>
-                  {emoji}
-                </div>
-              ))}
-            </div>
           </div>
 
           {/* Team shoutouts */}

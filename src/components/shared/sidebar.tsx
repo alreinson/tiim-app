@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useClerk } from '@clerk/nextjs'
 import {
   LayoutDashboard, MessageSquare, Target, Newspaper,
-  Trophy, BarChart3, Settings, LogOut, Sparkles, Users,
+  BarChart3, Settings, LogOut, Sparkles, Users,
 } from 'lucide-react'
 import { LanguageToggle } from '@/components/shared/language-toggle'
 import { UserMenu } from '@/components/shared/user-menu'
@@ -22,7 +22,6 @@ const memberNav: NavItem[] = [
   { href: '/chat',           label: 'Iganädalane vestlus', icon: MessageSquare },
   { href: '/goals',          label: 'Eesmärgid ja ülesanded', icon: Target },
   { href: '/news',           label: 'Tiimi uudised',     icon: Newspaper },
-  { href: '/achievements',   label: 'Saavutused',        icon: Trophy },
   { href: '/quarterly',      label: 'Kvartalisisselogimine', icon: Sparkles },
 ]
 
@@ -32,7 +31,6 @@ const managerTeamNav: NavItem[] = [
   { href: '/dashboard/team/goals',        label: 'Tiimi eesmärgid ja ülesanded', icon: Target },
   { href: '/dashboard/team/news',         label: 'Tiimi uudised',    icon: Newspaper },
   { href: '/dashboard/team/analytics',    label: 'Analüütika',       icon: BarChart3 },
-  { href: '/dashboard/team/achievements', label: 'Saavutused',       icon: Trophy },
 ]
 
 const managerMyNav: NavItem[] = [
@@ -40,7 +38,6 @@ const managerMyNav: NavItem[] = [
   { href: '/chat',           label: 'Minu vestlus',        icon: MessageSquare },
   { href: '/goals',          label: 'Minu eesmärgid ja ülesanded', icon: Target },
   { href: '/news',           label: 'Uudised',             icon: Newspaper },
-  { href: '/achievements',   label: 'Saavutused',          icon: Trophy },
   { href: '/quarterly',      label: 'Kvartal',             icon: Sparkles },
 ]
 
